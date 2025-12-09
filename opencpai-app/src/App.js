@@ -233,8 +233,8 @@ const OpenCPAiApp = () => {
                   className="text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1 outline-none cursor-pointer hover:bg-blue-100 transition-colors"
                 >
                   <option>深圳联兴会计师事务所 (标准模板)</option>
-                  <option>北京天健会计师事务所 (IPO模板)</option>
-                  <option>广东正中珠江 (高新模板)</option>
+                  <option>天健会计师事务所（特殊普通合伙）深圳分所</option>
+                  <option>中勤万信会计师事务所（特殊普通合伙）深圳分所</option>
                 </select>
              </div>
           </div>

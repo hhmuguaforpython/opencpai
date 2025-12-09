@@ -15,8 +15,8 @@ import {
   UserCheck
 } from 'lucide-react';
 
-// --- Gemini API Configuration ---
-const apiKey = process.env.REACT_APP_GEMINI_API_KEY || ""; 
+// --- 阿里千问 API Configuration ---
+const apiKey = process.env.REACT_APP_QWEN_API_KEY || ""; 
 
 const SYSTEM_PROMPT = `
 你是一个名为 "OpenCPAi 助手" 的专业审计 AI。
@@ -57,23 +57,22 @@ const OpenCPAiApp = () => {
     setIsAiThinking(true);
     try {
       const payload = {
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: userQuery }]
-          }
-        ],
-        systemInstruction: {
-          parts: [{ text: SYSTEM_PROMPT }]
+        model: "qwen-plus",
+        input: {
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: userQuery }
+          ]
         }
       };
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+        "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
           },
           body: JSON.stringify(payload)
         }
@@ -84,12 +83,12 @@ const OpenCPAiApp = () => {
       }
 
       const data = await response.json();
-      const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "抱歉，我暂时无法处理该请求。";
+      const aiText = data.output?.text || data.output?.choices?.[0]?.message?.content || "抱歉，我暂时无法处理该请求。";
       
       setMessages(prev => [...prev, { role: 'assistant', content: aiText }]);
 
     } catch (error) {
-      console.error("Gemini API Failed:", error);
+      console.error("Qwen API Failed:", error);
       setMessages(prev => [...prev, { role: 'assistant', content: "网络连接异常，请检查 API Key 配置或网络状态。", isError: true }]);
     } finally {
       setIsAiThinking(false);

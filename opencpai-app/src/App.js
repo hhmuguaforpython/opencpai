@@ -16,8 +16,6 @@ import {
 } from 'lucide-react';
 
 // --- 阿里千问 API Configuration ---
-const apiKey = process.env.REACT_APP_QWEN_API_KEY || ""; 
-
 const SYSTEM_PROMPT = `
 你是一个名为 "OpenCPAi 助手" 的专业审计 AI。
 你的角色：拥有 10 年经验的中国注册会计师 (CPA)，专注于协助中小事务所进行审计底稿编制和风险评估。
@@ -52,38 +50,29 @@ const OpenCPAiApp = () => {
     }
   }, [messages, isAiThinking]);
 
-  // --- Gemini API Call ---
+  // --- Qwen API Call (通过 Serverless Function) ---
   const callGemini = async (userQuery) => {
     setIsAiThinking(true);
     try {
-      const payload = {
-        model: "qwen-plus",
-        input: {
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: userQuery }
-          ]
-        }
-      };
+      const messages = [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userQuery }
+      ];
 
-      const response = await fetch(
-        "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify(payload)
-        }
-      );
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages })
+      });
 
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
       }
 
       const data = await response.json();
-      const aiText = data.output?.text || data.output?.choices?.[0]?.message?.content || "抱歉，我暂时无法处理该请求。";
+      const aiText = data.text || "抱歉，我暂时无法处理该请求。";
       
       setMessages(prev => [...prev, { role: 'assistant', content: aiText }]);
 

@@ -360,7 +360,7 @@ const OpenCPAiApp = () => {
 
       {/* 右侧 AI Copilot 侧边栏 */}
       {showChat && (
-        <div className="w-96 bg-white border-l border-slate-200 flex flex-col flex-shrink-0">
+        <div className="w-[512px] bg-white border-l border-slate-200 flex flex-col flex-shrink-0">
            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-white">
               <div className="flex items-center gap-2">
                  <Sparkles className="text-blue-600" size={18} />
@@ -426,21 +426,21 @@ const OpenCPAiApp = () => {
            {/* 输入框 */}
            <div className="p-4 bg-white border-t border-slate-200">
               <div className="relative">
-                 <input 
-                   type="text" 
+                 <textarea 
                    value={inputMessage}
                    onChange={(e) => setInputMessage(e.target.value)}
-                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                   onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                    placeholder="输入指令，如：研发费用能否资本化？" 
-                   className="w-full pl-4 pr-10 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-sm"
+                   className="w-full pl-4 pr-12 py-3 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-sm resize-none"
+                   rows={3}
                    disabled={isAiThinking}
                  />
                  <button 
                    onClick={handleSendMessage}
                    disabled={isAiThinking || !inputMessage.trim()}
-                   className="absolute right-2 top-2 text-slate-400 hover:text-blue-600 disabled:text-slate-300"
+                   className="absolute right-3 bottom-3 text-slate-400 hover:text-blue-600 disabled:text-slate-300"
                  >
-                    <Send size={18} />
+                    <Send size={20} />
                  </button>
               </div>
            </div>

@@ -400,25 +400,25 @@ const OpenCPAiApp = () => {
            </div>
 
            {/* 预设指令区 */}
-           <div className="p-2 bg-slate-50 border-t border-slate-200 overflow-x-auto whitespace-nowrap">
-              <div className="flex gap-2 px-2">
+           <div className="p-3 bg-slate-50 border-t border-slate-200">
+              <div className="flex flex-wrap gap-2">
                  <button 
                    onClick={() => handlePresetPrompt("📊 分析一下今年的毛利率波动，生成底稿说明。")}
-                   className="px-3 py-1.5 bg-white border border-blue-200 hover:bg-blue-50 rounded-full text-blue-700 text-xs transition-colors shadow-sm flex items-center gap-1"
+                   className="px-4 py-2 bg-white border border-blue-200 hover:bg-blue-50 rounded-full text-blue-700 text-sm transition-colors shadow-sm flex items-center gap-1"
                  >
-                   <Sparkles size={12} /> 分析毛利率
+                   <Sparkles size={14} /> 分析毛利率
                  </button>
                  <button 
                    onClick={() => handlePresetPrompt("⚠️ 检查是否存在关联方交易风险。")}
-                   className="px-3 py-1.5 bg-white border border-blue-200 hover:bg-blue-50 rounded-full text-blue-700 text-xs transition-colors shadow-sm flex items-center gap-1"
+                   className="px-4 py-2 bg-white border border-blue-200 hover:bg-blue-50 rounded-full text-blue-700 text-sm transition-colors shadow-sm flex items-center gap-1"
                  >
-                   <Sparkles size={12} /> 关联方排查
+                   <Sparkles size={14} /> 关联方排查
                  </button>
                  <button 
                    onClick={() => handlePresetPrompt("📝 生成管理建议书草稿，针对内控缺陷。")}
-                   className="px-3 py-1.5 bg-white border border-blue-200 hover:bg-blue-50 rounded-full text-blue-700 text-xs transition-colors shadow-sm flex items-center gap-1"
+                   className="px-4 py-2 bg-white border border-blue-200 hover:bg-blue-50 rounded-full text-blue-700 text-sm transition-colors shadow-sm flex items-center gap-1"
                  >
-                   <Sparkles size={12} /> 建议书草稿
+                   <Sparkles size={14} /> 建议书草稿
                  </button>
               </div>
            </div>
@@ -431,16 +431,16 @@ const OpenCPAiApp = () => {
                    onChange={(e) => setInputMessage(e.target.value)}
                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                    placeholder="输入指令，如：研发费用能否资本化？" 
-                   className="w-full pl-4 pr-12 py-3 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-sm resize-none"
-                   rows={3}
+                   className="w-full pl-4 pr-12 py-4 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-base resize-none"
+                   rows={4}
                    disabled={isAiThinking}
                  />
                  <button 
                    onClick={handleSendMessage}
                    disabled={isAiThinking || !inputMessage.trim()}
-                   className="absolute right-3 bottom-3 text-slate-400 hover:text-blue-600 disabled:text-slate-300"
+                   className="absolute right-4 bottom-4 text-slate-400 hover:text-blue-600 disabled:text-slate-300"
                  >
-                    <Send size={20} />
+                    <Send size={22} />
                  </button>
               </div>
            </div>

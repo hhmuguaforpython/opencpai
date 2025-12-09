@@ -377,7 +377,7 @@ const OpenCPAiApp = () => {
                  <Sparkles className="text-blue-600" size={18} />
                  <span className="font-bold text-slate-800">OpenCPAi 专家助手</span>
               </div>
-              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Gemini Powered</span>
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">通义千问 Powered</span>
            </div>
 
            {/* 聊天内容区 */}

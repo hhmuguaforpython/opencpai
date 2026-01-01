@@ -1,0 +1,251 @@
+/* =====================================================
+ * OpenCPAi 官网样式
+ * 版本: 1.0.0
+ * ===================================================== */
+
+/* ========== 基础重置 ========== */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+/* ========== 自定义滚动条 ========== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1E293B;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #64748B;
+}
+
+/* ========== 渐变文字 ========== */
+.gradient-text {
+    background: linear-gradient(135deg, #6366F1, #8B5CF6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ========== 玻璃态效果 ========== */
+.glass {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ========== 渐变边框 ========== */
+.gradient-border {
+    position: relative;
+    background: linear-gradient(#0F172A, #0F172A) padding-box,
+                linear-gradient(135deg, #6366F1, #8B5CF6) border-box;
+    border: 2px solid transparent;
+}
+
+/* ========== 光晕效果 ========== */
+.glow {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+.glow-blue {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.3);
+}
+
+/* ========== 动画 ========== */
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(139, 92, 246, 0.6);
+    }
+}
+
+.animate-float {
+    animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ========== 滚动渐入动画 ========== */
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.fade-in-up.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ========== 聊天消息动画 ========== */
+.chat-message {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========== 移动端聊天弹窗 ========== */
+#mobile-chat-modal {
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#mobile-chat-modal.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+#mobile-chat-modal.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ========== 响应式调整 ========== */
+@media (max-width: 1024px) {
+    main {
+        margin-right: 0 !important;
+    }
+}
+
+/* ========== 打字机效果 ========== */
+.typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background: #64748B;
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+    30% {
+        transform: translateY(-8px);
+        opacity: 1;
+    }
+}
+
+/* ========== Header 滚动效果 ========== */
+#header.scrolled {
+    background: rgba(15, 23, 42, 0.95);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* ========== 按钮点击效果 ========== */
+button:active,
+a:active {
+    transform: scale(0.98);
+}
+
+/* ========== 选择高亮 ========== */
+::selection {
+    background: rgba(139, 92, 246, 0.3);
+    color: #F8FAFC;
+}
+
+/* ========== 链接样式 ========== */
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* ========== 输入框焦点 ========== */
+input:focus {
+    outline: none;
+}
+
+/* ========== 时间线特殊样式 ========== */
+.timeline-dot {
+    position: relative;
+}
+
+.timeline-dot::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    background: inherit;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.3;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.3;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+    }
+}

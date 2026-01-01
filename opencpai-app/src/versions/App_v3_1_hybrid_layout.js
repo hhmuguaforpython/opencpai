@@ -118,138 +118,6 @@ const FileCard = ({ category, fileName, status, icon: Icon, color, statusText })
 };
 
 // ========================================
-// 确认弹窗组件 - 公司名称和审计截止日
-// ========================================
-const ConfirmDialog = ({ 
-  show, 
-  onClose, 
-  onConfirm, 
-  companyName, 
-  setCompanyName, 
-  auditEndDate, 
-  setAuditEndDate,
-  candidates 
-}) => {
-  if (!show) return null;
-
-  // 半角转全角
-  const toFullWidth = (str) => {
-    return str.replace(/[0-9]/g, (char) => 
-      String.fromCharCode(char.charCodeAt(0) + 0xFEE0)
-    );
-  };
-
-  // 日期格式验证和自动转换
-  const handleDateChange = (e) => {
-    let value = e.target.value;
-    // 半角数字转全角
-    value = toFullWidth(value);
-    setAuditEndDate(value);
-  };
-
-  // 验证日期格式
-  const isValidDate = (dateStr) => {
-    const pattern = /^２０[２-９][０-９]年[０１]?[０-９]月[０-３]?[０-９]日$/;
-    return pattern.test(dateStr);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-[500px] max-w-[90vw]">
-        {/* 标题 */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-            <Settings size={20} className="text-blue-500" />
-            确认审计信息
-          </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* 内容 */}
-        <div className="p-6 space-y-5">
-          {/* 公司名称 */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              公司名称 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              placeholder="请输入公司全称"
-            />
-            {/* 来源提示 */}
-            {candidates && Object.keys(candidates).length > 0 && (
-              <div className="mt-2 text-xs text-slate-500 space-y-1">
-                <p className="font-medium">识别来源：</p>
-                {candidates.excel && (
-                  <p className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                    财务报表编制单位：{candidates.excel}
-                  </p>
-                )}
-                {candidates.pdf && (
-                  <p className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                    审计报告：{candidates.pdf}
-                  </p>
-                )}
-                {candidates.filename && (
-                  <p className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                    文件名：{candidates.filename}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* 审计截止日 */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              审计截止日 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={auditEndDate}
-              onChange={handleDateChange}
-              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${
-                isValidDate(auditEndDate) ? 'border-slate-300' : 'border-orange-400 bg-orange-50'
-              }`}
-              placeholder="例：２０２４年１２月３１日"
-            />
-            <p className="mt-1 text-xs text-slate-400">
-              格式：YYYY年MM月DD日（数字会自动转为全角）
-            </p>
-          </div>
-        </div>
-
-        {/* 按钮 */}
-        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition"
-          >
-            取消
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={!companyName.trim()}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <Play size={16} />
-            确认并执行
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ========================================
 // 空白上传卡片组件
 // ========================================
 const EmptyFileCard = ({ category, required, color }) => {
@@ -302,12 +170,6 @@ const OpenCPAiApp = () => {
   const [taskId, setTaskId] = useState(null);
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState(null);
-  
-  // 确认弹窗状态
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [companyName, setCompanyName] = useState('');
-  const [auditEndDate, setAuditEndDate] = useState('2024年12月31日'); // 默认审计截止日
-  const [companyNameCandidates, setCompanyNameCandidates] = useState({}); // 公司名称来源候选
   
   // 咨询模式状态
   const [consultingQuery, setConsultingQuery] = useState('');
@@ -440,16 +302,13 @@ const OpenCPAiApp = () => {
       
       if (data.files) {
         for (const file of data.files) {
-          // ⭐ 2025-12-22修复：映射后端category到前端状态
-          // 后端返回: balance, journal, financial, audit_report
-          // 前端状态: balance, journal, statement, prior_report
           if (file.category === 'balance') {
             newFiles.balance = { name: file.filename, status: 'ready' };
           } else if (file.category === 'journal') {
             newFiles.journal = { name: file.filename, status: 'ready' };
-          } else if (file.category === 'financial' || file.category === 'statement') {
+          } else if (file.category === 'statement') {
             newFiles.statement = { name: file.filename, status: 'ready' };
-          } else if (file.category === 'audit_report' || file.category === 'prior_report' || file.category === 'audit') {
+          } else if (file.category === 'prior_report') {
             newFiles.prior_report = { name: file.filename, status: 'ready' };
           }
         }
@@ -471,7 +330,7 @@ const OpenCPAiApp = () => {
   };
 
   // ========================================
-  // 开始处理 - 直接执行Pipeline（简化版，无确认弹窗）
+  // 开始处理
   // ========================================
   const handleStartProcessing = async () => {
     if (!recognizedFiles.balance) {
@@ -482,75 +341,51 @@ const OpenCPAiApp = () => {
     setStatus('processing');
     setProgress(0);
     addLog('🚀 开始处理...');
-    addLog(`📝 使用默认参数：公司名称由后端识别，审计截止日 2024/12/31`);
     
     try {
-      // ⭐ 统一调用V2.6 pipeline（Demo和上传模式都用同一个接口）
-      const endpoint = `${API_BASE}/api/run-full-pipeline`;
-      
-      // ⭐ 简化版：直接使用默认值，让后端处理公司名称识别
-      const requestBody = { 
-        source: filesSource || 'demo',
-        task_id: taskId || '',
-        company_name: '',  // 让后端自动识别
-        audit_end_date: '2024/12/31',  // 固定默认值
-      };
-      console.log('[DEBUG] 发送请求到 run-full-pipeline:', requestBody);
-      addLog(`[DEBUG] 请求体: ${JSON.stringify(requestBody)}`);
+      const endpoint = filesSource === 'demo' 
+        ? `${API_BASE}/api/run-full-pipeline`
+        : `${API_BASE}/api/process/${taskId}`;
       
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),  // 使用已定义的requestBody
+        body: JSON.stringify({ source: filesSource }),
       });
       
       if (!response.ok) throw new Error('处理请求失败');
       
-      // 启动真实的后端任务
-      addLog('🔄 后端Pipeline V2.6开始执行...');
-      
-      // 进度模拟：预计2分钟（120秒）完成
-      // 每1200ms更新一次，每次+1%（共100次 = 120秒 = 2分钟）
-      const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 95) {
-            // 停在95%等待真正完成
-            return 95;
-          }
-          return prev + 1;
-        });
-      }, 1200);
-      
-      // 等待后端真正返回结果
       const data = await response.json();
       
-      // 处理完成
-      clearInterval(progressInterval);
-      setProgress(100);
-      setStatus('completed');
-      addLog('✅ 处理完成！');
+      // 模拟进度更新
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(progressInterval);
+            return 100;
+          }
+          return prev + 10;
+        });
+      }, 500);
       
-      // 显示结果摘要
-      if (data.company_name) {
-        addLog(`📁 公司: ${data.company_name}`);
-      }
-      if (data.processing_time) {
-        addLog(`⏱ 耗时: ${data.processing_time.toFixed(1)}秒`);
-      }
-      if (data.total_score && data.total_max) {
-        addLog(`📊 评分: ${data.total_score}/${data.total_max} (${(data.total_score/data.total_max*100).toFixed(1)}%)`);
-      }
+      // 处理成功
+      setTimeout(() => {
+        clearInterval(progressInterval);
+        setProgress(100);
+        setStatus('completed');
+        addLog('✅ 处理完成！');
+        
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: '✅ 底稿生成完毕！我已经初步审阅了数据，发现 **销售费用-业务招待费** 较上期增长 45%，建议您重点关注。需要我为您生成该科目的抽凭计划吗？' 
+        }]);
+      }, 5000);
       
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: `✅ 底稿生成完毕！\n\n**公司**: ${data.company_name || '未知'}\n**耗时**: ${data.processing_time?.toFixed(1) || '?'}秒\n**评分**: ${data.total_score || '?'}/${data.total_max || '?'}\n\n需要我为您分析底稿数据吗？` 
-      }]);
-
     } catch (error) {
       console.error('处理失败:', error);
       setErrorMessage(error.message);
       setStatus('error');
-      addLog(`❌ 错误: ${error.message}`);
+      addLog(`❌ 处理失败: ${error.message}`);
     }
   };
 
@@ -687,8 +522,6 @@ const OpenCPAiApp = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-800 overflow-hidden">
-      {/* 确认弹窗已移除 - 直接执行Pipeline */}
-
       {/* 左侧导航栏 */}
       <div className="w-64 bg-slate-900 text-white flex flex-col shadow-xl flex-shrink-0">
         <div className="p-6 border-b border-slate-700">

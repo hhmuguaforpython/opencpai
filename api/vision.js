@@ -1,3 +1,23 @@
+/**
+ * ============================================================
+ * [V2.0 预留接口 - 当前版本(V1.0)未启用]
+ * 
+ * 功能: 千问视觉识别接口 (OCR/图像理解)
+ * 状态: 已禁用，保留供V2.0使用
+ * 禁用日期: 2025-12-18
+ * ============================================================
+ */
+
+export default async function handler(req, res) {
+  // V1.0: 直接返回501，表示功能未实现
+  return res.status(501).json({ 
+    error: 'Vision功能在V1.0版本中未启用',
+    message: '此接口为V2.0预留功能'
+  });
+}
+
+/*
+// ============ V2.0 原始代码（已注释）============
 export default async function handler(req, res) {
   // 设置 CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -59,3 +79,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }
+*/

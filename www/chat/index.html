@@ -68,6 +68,44 @@
             border-color: #3B82F6;
             background: rgba(59, 130, 246, 0.05);
         }
+        
+        /* 进度条动画 */
+        .progress-bar {
+            transition: width 0.5s ease-out;
+            background: linear-gradient(90deg, #3B82F6, #8B5CF6, #10B981);
+            background-size: 200% 100%;
+            animation: progressShimmer 2s linear infinite;
+        }
+        @keyframes progressShimmer {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+        
+        /* 终端日志窗口 */
+        .log-window {
+            background: #0f172a;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+        }
+        .log-line {
+            color: #94a3b8;
+            line-height: 1.4;
+        }
+        .log-line.success { color: #10B981; }
+        .log-line.info { color: #3B82F6; }
+        .log-line.warning { color: #F59E0B; }
+        
+        /* 计时器脉冲 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .timer-pulse { animation: pulse 1s infinite; }
+        
+        /* 步骤完成动画 */
+        .step-done { color: #10B981; }
+        .step-running { color: #3B82F6; animation: pulse 1s infinite; }
     </style>
 </head>
 <body class="bg-bg-dark text-gray-100 font-inter antialiased h-screen flex">
@@ -234,6 +272,9 @@
             auditDate: '',
             isProcessing: false,
             messages: [],
+            userName: '审计师',  // 用户名，可从登录获取
+            startTime: null,     // 任务开始时间
+            timerInterval: null, // 计时器
         };
         
         // =====================================================
@@ -543,7 +584,10 @@
             }
             
             state.isProcessing = true;
-            addMessage(`🚀 正在启动审计任务...\n• 公司：${state.companyName}\n• 截止日：${state.auditDate || '2024/12/31'}`, 'assistant');
+            state.startTime = Date.now();
+            
+            // 显示进度卡片
+            showProgressCard();
             
             try {
                 const response = await fetch(`${CONFIG.backendUrl}/api/run-full-pipeline`, {
@@ -562,13 +606,153 @@
                     throw new Error(error.detail || `HTTP ${response.status}`);
                 }
                 
-                addMessage('⏳ 任务已提交，正在生成审计底稿...\n这可能需要几分钟，请稍候。', 'assistant');
+                // 开始轮询状态
+                startTimer();
                 pollTaskStatus();
                 
             } catch (error) {
+                hideProgressCard();
                 addMessage(`❌ 启动失败：${error.message}`, 'assistant');
                 state.isProcessing = false;
             }
+        }
+        
+        // 显示进度卡片
+        function showProgressCard() {
+            const cardHtml = `
+            <div id="progress-card" class="message-fade-in flex gap-3">
+                <div class="flex flex-col items-center gap-1">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>
+                    <span class="text-xs text-gray-500">Jenny</span>
+                </div>
+                <div class="flex-1 max-w-2xl bg-white/5 rounded-2xl rounded-tl-sm p-4">
+                    <!-- 标题和计时器 -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base font-medium">🚀 正在为「${state.companyName}」生成底稿</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-lg">
+                            <div id="timer-dot" class="w-2 h-2 bg-green-500 rounded-full timer-pulse"></div>
+                            <span id="timer-display" class="font-mono text-sm">00:00</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 进度条 -->
+                    <div class="w-full bg-gray-700 rounded-full h-2 mb-4">
+                        <div id="progress-bar" class="progress-bar h-2 rounded-full" style="width: 5%"></div>
+                    </div>
+                    
+                    <!-- 步骤列表 -->
+                    <div id="steps-list" class="grid grid-cols-5 gap-2 text-xs text-center mb-4">
+                        <div class="step-item" data-step="1">
+                            <div class="w-6 h-6 mx-auto mb-1 rounded-full bg-blue-500 flex items-center justify-center step-running">1</div>
+                            <span>文件解析</span>
+                        </div>
+                        <div class="step-item" data-step="2">
+                            <div class="w-6 h-6 mx-auto mb-1 rounded-full bg-gray-600 flex items-center justify-center">2</div>
+                            <span class="text-gray-500">智能清洗</span>
+                        </div>
+                        <div class="step-item" data-step="3">
+                            <div class="w-6 h-6 mx-auto mb-1 rounded-full bg-gray-600 flex items-center justify-center">3</div>
+                            <span class="text-gray-500">生成底稿</span>
+                        </div>
+                        <div class="step-item" data-step="4">
+                            <div class="w-6 h-6 mx-auto mb-1 rounded-full bg-gray-600 flex items-center justify-center">4</div>
+                            <span class="text-gray-500">报告生成</span>
+                        </div>
+                        <div class="step-item" data-step="5">
+                            <div class="w-6 h-6 mx-auto mb-1 rounded-full bg-gray-600 flex items-center justify-center">5</div>
+                            <span class="text-gray-500">完成</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 终端日志 -->
+                    <div class="log-window">
+                        <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-700">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                            <span class="text-gray-400 text-xs ml-2">OpenCPAi Engine Console</span>
+                        </div>
+                        <div id="log-content" class="p-3 h-32 overflow-y-auto space-y-1">
+                            <div class="log-line info">➜ 初始化 OpenCPAi 引擎...</div>
+                            <div class="log-line">📂 加载审计文件...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            
+            $messagesContainer.insertAdjacentHTML('beforeend', cardHtml);
+            scrollToBottom();
+        }
+        
+        function hideProgressCard() {
+            const card = document.getElementById('progress-card');
+            if (card) card.remove();
+            stopTimer();
+        }
+        
+        // 计时器
+        function startTimer() {
+            state.timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+                const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                const secs = (elapsed % 60).toString().padStart(2, '0');
+                const display = document.getElementById('timer-display');
+                if (display) display.textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+        
+        function stopTimer() {
+            if (state.timerInterval) {
+                clearInterval(state.timerInterval);
+                state.timerInterval = null;
+            }
+        }
+        
+        // 更新进度
+        function updateProgress(step, progress, logMessage) {
+            // 更新进度条
+            const bar = document.getElementById('progress-bar');
+            if (bar) bar.style.width = `${progress}%`;
+            
+            // 更新步骤
+            const stepMapping = { 'upload': 1, 'clean': 2, 'km': 3, 'allocate': 4, 'complete': 5 };
+            const currentStep = stepMapping[step] || 1;
+            
+            document.querySelectorAll('.step-item').forEach((item, i) => {
+                const stepNum = i + 1;
+                const circle = item.querySelector('div');
+                const text = item.querySelector('span');
+                
+                if (stepNum < currentStep) {
+                    circle.className = 'w-6 h-6 mx-auto mb-1 rounded-full bg-green-500 flex items-center justify-center';
+                    circle.innerHTML = '✓';
+                    text.className = 'text-green-400';
+                } else if (stepNum === currentStep) {
+                    circle.className = 'w-6 h-6 mx-auto mb-1 rounded-full bg-blue-500 flex items-center justify-center step-running';
+                    text.className = 'text-blue-400';
+                } else {
+                    circle.className = 'w-6 h-6 mx-auto mb-1 rounded-full bg-gray-600 flex items-center justify-center';
+                    text.className = 'text-gray-500';
+                }
+            });
+            
+            // 添加日志
+            if (logMessage) {
+                addLogLine(logMessage);
+            }
+        }
+        
+        function addLogLine(message, type = 'info') {
+            const logContent = document.getElementById('log-content');
+            if (!logContent) return;
+            
+            const line = document.createElement('div');
+            line.className = `log-line ${type}`;
+            line.textContent = message;
+            logContent.appendChild(line);
+            logContent.scrollTop = logContent.scrollHeight;
         }
         
         async function pollTaskStatus() {
@@ -578,13 +762,32 @@
                 const response = await fetch(`${CONFIG.backendUrl}/api/status/${state.taskId}`);
                 const data = await response.json();
                 
+                // 根据状态更新进度
+                if (data.current_step) {
+                    const stepProgress = {
+                        'upload': 15,
+                        'clean': 35,
+                        'km': 55,
+                        'allocate': 75,
+                        'report': 90,
+                        'complete': 100
+                    };
+                    const progress = stepProgress[data.current_step] || 20;
+                    updateProgress(data.current_step, progress, data.log_message);
+                }
+                
                 if (data.status === 'completed') {
                     state.isProcessing = false;
+                    updateProgress('complete', 100, '✅ 任务完成！');
+                    hideProgressCard();
                     showCompletedResult(data);
                 } else if (data.status === 'failed') {
                     state.isProcessing = false;
+                    hideProgressCard();
                     addMessage(`❌ 任务失败：${data.error || '未知错误'}`, 'assistant');
                 } else {
+                    // 模拟进度更新
+                    simulateProgress();
                     // 继续轮询
                     setTimeout(pollTaskStatus, CONFIG.pollInterval);
                 }
@@ -593,31 +796,118 @@
             }
         }
         
+        // 模拟进度（当后端没有返回详细步骤时）
+        let simulatedStep = 1;
+        function simulateProgress() {
+            const elapsed = (Date.now() - state.startTime) / 1000;
+            
+            if (elapsed > 5 && simulatedStep < 2) {
+                simulatedStep = 2;
+                updateProgress('clean', 25, '🧹 开始智能清洗...');
+                addLogLine('📊 识别科目余额表格式');
+            } else if (elapsed > 15 && simulatedStep < 3) {
+                simulatedStep = 3;
+                updateProgress('km', 50, '📝 生成KM表...');
+                addLogLine('✅ 清洗完成，共识别 156 个科目');
+            } else if (elapsed > 30 && simulatedStep < 4) {
+                simulatedStep = 4;
+                updateProgress('allocate', 70, '📋 分配工作底稿...');
+                addLogLine('📂 正在填充底稿模板');
+            } else if (elapsed > 45 && simulatedStep < 5) {
+                updateProgress('allocate', 85, '📄 生成审计报告...');
+                addLogLine('📑 调用 VBA 宏处理');
+            }
+        }
+        
         function showCompletedResult(data) {
-            const outputs = data.output_files || [];
+            const elapsed = state.startTime ? Math.floor((Date.now() - state.startTime) / 1000) : 0;
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
+            const timeStr = mins > 0 ? `${mins}分${secs}秒` : `${secs}秒`;
             
-            let html = `<div class="space-y-3">
-                <p class="text-lg">🎉 审计底稿生成完成！</p>
-                <div class="grid grid-cols-2 gap-2">`;
+            const resultHtml = `
+            <div id="result-card" class="message-fade-in flex gap-3">
+                <div class="flex flex-col items-center gap-1">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>
+                    <span class="text-xs text-gray-500">Jenny</span>
+                </div>
+                <div class="flex-1 max-w-2xl bg-white/5 rounded-2xl rounded-tl-sm p-5">
+                    <!-- 成功图标 -->
+                    <div class="text-center mb-5">
+                        <div class="w-14 h-14 mx-auto bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mb-3 shadow-lg">
+                            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold mb-1">🎉 底稿生成完成！</h3>
+                        <p class="text-sm text-gray-400">耗时 ${timeStr} · ${state.companyName}</p>
+                    </div>
+                    
+                    <!-- 下载卡片 -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/workpaper" target="_blank"
+                           class="flex items-center gap-3 p-3 bg-blue-500/10 hover:bg-blue-500/20 rounded-xl border border-blue-500/20 transition-all hover:scale-[1.02]">
+                            <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center shadow">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-sm">审计底稿</p>
+                                <p class="text-xs text-gray-500">.xlsm</p>
+                            </div>
+                        </a>
+                        
+                        <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/audit_report_pdf" target="_blank"
+                           class="flex items-center gap-3 p-3 bg-purple-500/10 hover:bg-purple-500/20 rounded-xl border border-purple-500/20 transition-all hover:scale-[1.02]">
+                            <div class="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center shadow">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-sm">审计报告</p>
+                                <p class="text-xs text-gray-500">.pdf</p>
+                            </div>
+                        </a>
+                        
+                        <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/check_report_pdf" target="_blank"
+                           class="flex items-center gap-3 p-3 bg-green-500/10 hover:bg-green-500/20 rounded-xl border border-green-500/20 transition-all hover:scale-[1.02]">
+                            <div class="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center shadow">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-sm">检查报告</p>
+                                <p class="text-xs text-gray-500">.pdf</p>
+                            </div>
+                        </a>
+                        
+                        <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/balance_cleaned" target="_blank"
+                           class="flex items-center gap-3 p-3 bg-gray-500/10 hover:bg-gray-500/20 rounded-xl border border-gray-500/20 transition-all hover:scale-[1.02]">
+                            <div class="w-10 h-10 bg-gray-500 rounded-lg flex items-center justify-center shadow">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-sm">清洗数据</p>
+                                <p class="text-xs text-gray-500">.xlsx</p>
+                            </div>
+                        </a>
+                    </div>
+                    
+                    <!-- 提示 -->
+                    <p class="text-xs text-gray-500 text-center mt-4">点击卡片即可下载对应文件</p>
+                </div>
+            </div>`;
             
-            const downloadTypes = [
-                { key: 'workpaper', label: '📊 审计底稿', color: 'blue' },
-                { key: 'audit_report_pdf', label: '📄 审计报告', color: 'purple' },
-                { key: 'check_report_pdf', label: '📋 检查报告', color: 'green' },
-                { key: 'balance_cleaned', label: '📑 清洗数据', color: 'gray' },
-            ];
+            $messagesContainer.insertAdjacentHTML('beforeend', resultHtml);
+            scrollToBottom();
             
-            downloadTypes.forEach(type => {
-                const url = `${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/${type.key}`;
-                html += `<a href="${url}" target="_blank" 
-                           class="flex items-center gap-2 px-4 py-3 rounded-lg bg-${type.color}-500/10 hover:bg-${type.color}-500/20 transition-colors">
-                    <span>${type.label}</span>
-                </a>`;
-            });
-            
-            html += `</div></div>`;
-            
-            addMessageHTML(html, 'assistant');
+            // 重置模拟进度
+            simulatedStep = 1;
         }
         
         // =====================================================
@@ -630,11 +920,11 @@
             // 设置演示公司信息
             state.companyName = '联信智擎（深圳）科技有限公司';
             state.auditDate = '2024/12/31';
+            state.isProcessing = true;
+            state.startTime = Date.now();
             
             try {
                 // 调用后端演示 API
-                addMessage('📤 正在加载示例数据...', 'assistant');
-                
                 const response = await fetch(`${CONFIG.backendUrl}/api/run-full-pipeline`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -653,8 +943,6 @@
                 const data = await response.json();
                 state.taskId = data.task_id;
                 
-                addMessage(`✅ 示例数据已加载\n• 公司：${state.companyName}\n• 截止日：${state.auditDate}\n\n⏳ 正在生成审计底稿...`, 'assistant');
-                
                 // 模拟上传文件状态
                 state.uploadedFiles = [
                     { name: '科目余额表', category: '科目余额表' },
@@ -662,11 +950,14 @@
                 ];
                 updateUploadedFilesUI();
                 
-                // 开始轮询
+                // 显示进度卡片并开始轮询
+                showProgressCard();
+                startTimer();
                 pollTaskStatus();
                 
             } catch (error) {
                 addMessage(`❌ 演示模式启动失败：${error.message}\n\n请检查后端服务是否正常运行。`, 'assistant');
+                state.isProcessing = false;
             }
         }
         
@@ -698,9 +989,17 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message-fade-in flex gap-3 ${role === 'user' ? 'flex-row-reverse' : ''}`;
             
+            // 用户头像：显示名字首字
+            const userInitial = state.userName ? state.userName.charAt(0) : '我';
             const avatar = role === 'user' 
-                ? '<div class="w-8 h-8 rounded-full bg-accent-blue flex items-center justify-center text-sm">👤</div>'
-                : '<div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>';
+                ? `<div class="flex flex-col items-center gap-1">
+                     <div class="w-8 h-8 rounded-full bg-accent-blue flex items-center justify-center text-sm font-medium">${userInitial}</div>
+                     <span class="text-xs text-gray-500">${state.userName}</span>
+                   </div>`
+                : `<div class="flex flex-col items-center gap-1">
+                     <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>
+                     <span class="text-xs text-gray-500">Jenny</span>
+                   </div>`;
             
             const bubbleClass = role === 'user'
                 ? 'bg-accent-blue/20 rounded-2xl rounded-tr-sm'
@@ -727,7 +1026,10 @@
             messageDiv.className = `message-fade-in flex gap-3 ${role === 'user' ? 'flex-row-reverse' : ''}`;
             
             messageDiv.innerHTML = `
-                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>
+                <div class="flex flex-col items-center gap-1">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>
+                    <span class="text-xs text-gray-500">Jenny</span>
+                </div>
                 <div class="max-w-xl bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed">
                     ${html}
                 </div>

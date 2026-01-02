@@ -106,12 +106,64 @@
         /* 步骤完成动画 */
         .step-done { color: #10B981; }
         .step-running { color: #3B82F6; animation: pulse 1s infinite; }
+        
+        /* 移动端响应式 */
+        @media (max-width: 768px) {
+            /* 隐藏侧边栏 */
+            #sidebar { display: none; }
+            
+            /* 调整欢迎屏 */
+            #welcome-screen h1 { font-size: 1.5rem; }
+            #welcome-screen p { font-size: 0.875rem; }
+            
+            /* 调整快捷按钮 */
+            #welcome-screen .grid-cols-2 { gap: 0.5rem; }
+            #welcome-screen button { padding: 0.75rem; }
+            
+            /* 调整消息容器 */
+            #messages-container { padding: 1rem; }
+            
+            /* 调整进度卡片 */
+            .log-window { display: none; }
+            #steps-list { grid-template-columns: repeat(5, 1fr); gap: 0.25rem; font-size: 0.65rem; }
+            #steps-list .w-6 { width: 1.25rem; height: 1.25rem; font-size: 0.6rem; }
+            
+            /* 调整结果卡片 */
+            #result-card .grid-cols-2 { grid-template-columns: 1fr; }
+            #result-card .flex.gap-3 { flex-direction: column; }
+            
+            /* 调整输入区 */
+            #chat-input { font-size: 16px; } /* 防止iOS缩放 */
+        }
+        
+        /* 小屏幕优化 */
+        @media (max-width: 480px) {
+            #welcome-screen .flex-wrap { flex-direction: column; }
+            #welcome-screen .suggest-prompt { width: 100%; }
+        }
     </style>
 </head>
 <body class="bg-bg-dark text-gray-100 font-inter antialiased h-screen flex">
     
+    <!-- 移动端头部 -->
+    <header id="mobile-header" class="fixed top-0 left-0 right-0 z-50 bg-bg-dark/95 backdrop-blur border-b border-white/5 p-3 md:hidden">
+        <div class="flex items-center justify-between">
+            <a href="../" class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center">
+                    <span class="text-white font-bold text-sm">O</span>
+                </div>
+                <span class="font-semibold">OpenCPAi</span>
+            </a>
+            <button id="mobile-new-chat" class="p-2 rounded-lg border border-white/10 hover:bg-white/5">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+    
     <!-- ========== SIDEBAR ========== -->
-    <aside id="sidebar" class="w-64 bg-bg-sidebar border-r border-white/5 flex flex-col h-full">
+    <aside id="sidebar" class="w-64 bg-bg-sidebar border-r border-white/5 flex-col h-full hidden md:flex">
         <!-- Logo -->
         <div class="p-4 border-b border-white/5">
             <a href="../" class="flex items-center gap-3">
@@ -152,7 +204,7 @@
     </aside>
     
     <!-- ========== MAIN CHAT AREA ========== -->
-    <main class="flex-1 flex flex-col h-full">
+    <main class="flex-1 flex flex-col h-full pt-14 md:pt-0">
         
         <!-- Chat Messages -->
         <div id="chat-messages" class="flex-1 overflow-y-auto">
@@ -322,6 +374,12 @@
             
             // 新对话
             $newChatBtn.addEventListener('click', resetChat);
+            
+            // 移动端新对话按钮
+            const $mobileNewChat = document.getElementById('mobile-new-chat');
+            if ($mobileNewChat) {
+                $mobileNewChat.addEventListener('click', resetChat);
+            }
             
             // 建议提问
             document.querySelectorAll('.suggest-prompt').forEach(btn => {
@@ -681,7 +739,7 @@
                         </div>
                         <div class="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-lg">
                             <div id="timer-dot" class="w-2 h-2 bg-green-500 rounded-full timer-pulse"></div>
-                            <span id="timer-display" class="font-mono text-sm text-green-400">0 秒</span>
+                            <span id="timer-display" class="font-mono text-sm text-green-400">00:00.00</span>
                         </div>
                     </div>
                     
@@ -746,25 +804,23 @@
             stopTimer();
         }
         
-        // 计时器
+        // 计时器 - 显示格式 00:00.00 (分:秒.厘秒)
+        let timerStartMs = 0;
         function startTimer() {
+            timerStartMs = Date.now();
             state.timerInterval = setInterval(() => {
-                const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
-                const display = document.getElementById('timer-display');
+                const elapsedMs = Date.now() - timerStartMs;
+                const totalSeconds = Math.floor(elapsedMs / 1000);
+                const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+                const secs = (totalSeconds % 60).toString().padStart(2, '0');
+                const centisecs = Math.floor((elapsedMs % 1000) / 10).toString().padStart(2, '0');
                 
-                if (elapsed < 60) {
-                    // 显示秒数
-                    if (display) display.textContent = `${elapsed} 秒`;
-                } else {
-                    // 显示分秒
-                    const mins = Math.floor(elapsed / 60);
-                    const secs = elapsed % 60;
-                    if (display) display.textContent = `${mins} 分 ${secs} 秒`;
-                }
+                const display = document.getElementById('timer-display');
+                if (display) display.textContent = `${mins}:${secs}.${centisecs}`;
                 
                 // 更新预估剩余时间
-                updateETA(elapsed);
-            }, 1000);
+                updateETA(totalSeconds);
+            }, 50); // 50ms更新一次，让厘秒流畅
         }
         
         // 更新预估剩余时间

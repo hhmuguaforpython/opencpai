@@ -779,9 +779,9 @@
             const icon = icons[category] || '📄';
             
             if (hasFile) {
-                // 每个文件单独一行显示
+                // 每个文件单独一行显示（不截断，自动换行）
                 const fileListHtml = fileNames.map((name, idx) => 
-                    `<div class="text-sm text-gray-200 font-medium truncate" title="${name}">✓ ${idx + 1}、${name}</div>`
+                    `<div class="text-sm text-gray-200 font-medium break-all leading-relaxed">✓ ${idx + 1}、${name}</div>`
                 ).join('');
                 
                 return `

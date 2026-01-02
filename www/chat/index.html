@@ -307,13 +307,11 @@
     <!-- JavaScript -->
     <script>
         // =====================================================
-        // 配置（自动检测本地/生产环境）
+        // 配置（与 Web App 保持一致：始终用本地后端）
         // =====================================================
         const CONFIG = {
-            // 自动检测：localhost/127.0.0.1 用本地API，其他用生产API
-            backendUrl: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-                ? 'http://localhost:8100'
-                : 'https://api.opencpai.com',
+            // ⭐ 与 Web App 一致：始终使用本地后端（用户在自己电脑运行）
+            backendUrl: 'http://127.0.0.1:8100',
             pollInterval: 2000,
         };
         console.log('🔧 Backend URL:', CONFIG.backendUrl);

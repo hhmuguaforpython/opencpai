@@ -91,6 +91,12 @@
         .log-line {
             color: #94a3b8;
             line-height: 1.4;
+            animation: logFadeIn 0.3s ease-out forwards;
+            opacity: 0;
+        }
+        @keyframes logFadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .log-line.success { color: #10B981; }
         .log-line.info { color: #3B82F6; }
@@ -1421,9 +1427,13 @@
             
             state.isProcessing = true;
             state.startTime = Date.now();
+            state.lastStep = ''; // 重置步骤追踪
             
             // 显示进度卡片
             showProgressCard();
+            
+            // 添加初始日志
+            addLogLine('🚀 启动 OpenCPAi 引擎...', 'info');
             
             try {
                 // ⭐ 与 Web 模式一致：公司名称由后端自动识别
@@ -1445,6 +1455,7 @@
                 
                 // 开始轮询状态
                 startTimer();
+                startLogsAnimation(); // 启动日志动画（复制自Web App）
                 pollTaskStatus();
                 
             } catch (error) {
@@ -1517,9 +1528,8 @@
                             <div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
                             <span class="text-gray-400 text-xs ml-2">OpenCPAi Engine Console</span>
                         </div>
-                        <div id="log-content" class="p-3 h-32 overflow-y-auto space-y-1">
-                            <div class="log-line info">➜ 初始化 OpenCPAi 引擎...</div>
-                            <div class="log-line">📂 加载审计文件...</div>
+                        <div id="log-content" class="p-3 h-40 overflow-y-auto space-y-1">
+                            <!-- 日志将由 addLogLine 动态添加 -->
                         </div>
                     </div>
                 </div>
@@ -1621,11 +1631,25 @@
             const logContent = document.getElementById('log-content');
             if (!logContent) return;
             
+            // 生成时间戳
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+            
             const line = document.createElement('div');
-            line.className = `log-line ${type}`;
-            line.textContent = message;
+            line.className = `log-line ${type} flex items-start gap-2`;
+            line.innerHTML = `
+                <span class="text-gray-500 text-xs font-mono flex-shrink-0 w-16">${timeStr}</span>
+                <span>${message}</span>
+            `;
             logContent.appendChild(line);
-            logContent.scrollTop = logContent.scrollHeight;
+            
+            // 平滑滚动到底部
+            requestAnimationFrame(() => {
+                logContent.scrollTo({
+                    top: logContent.scrollHeight,
+                    behavior: 'smooth'
+                });
+            });
         }
         
         async function pollTaskStatus() {
@@ -1642,29 +1666,38 @@
                     if ($companySpan) {
                         $companySpan.textContent = data.company_name;
                     }
+                    // 显示真实的公司名称日志
+                    addLogLine(`🏢 公司: ${data.company_name}`, 'success');
                 }
                 
-                // 根据状态更新进度
-                if (data.current_step) {
-                    const stepProgress = {
-                        'upload': 15,
-                        'clean': 35,
-                        'km': 55,
-                        'allocate': 75,
-                        'report': 90,
-                        'complete': 100
-                    };
-                    const progress = stepProgress[data.current_step] || 20;
-                    updateProgress(data.current_step, progress, data.log_message);
+                // 显示后端返回的真实步骤（如果有变化）
+                if (data.current_step && data.current_step !== state.lastStep) {
+                    state.lastStep = data.current_step;
+                    addLogLine(`🔄 ${data.current_step}`, 'info');
+                }
+                
+                // 根据后端返回的进度更新（优先使用后端数据）
+                if (data.progress) {
+                    const bar = document.getElementById('progress-bar');
+                    const percent = document.getElementById('progress-percent');
+                    if (bar) bar.style.width = `${data.progress}%`;
+                    if (percent) percent.textContent = `${data.progress}%`;
                 }
                 
                 if (data.status === 'completed') {
                     state.isProcessing = false;
+                    stopLogsAnimation(); // 停止日志动画
+                    // 添加真实的完成日志
+                    addLogLine('✅ 处理完成！', 'success');
+                    if (data.output_files && data.output_files.length > 0) {
+                        addLogLine(`📁 生成 ${data.output_files.length} 个文件`, 'success');
+                    }
                     updateProgress('complete', 100, '✅ 任务完成！');
                     hideProgressCard();
                     showCompletedResult(data);
                 } else if (data.status === 'failed') {
                     state.isProcessing = false;
+                    stopLogsAnimation(); // 停止日志动画
                     hideProgressCard();
                     addMessage(`❌ 任务失败：${data.error || '未知错误'}`, 'assistant');
                 } else {
@@ -1680,39 +1713,96 @@
         
         // 模拟进度（当后端没有返回详细步骤时）
         // 按120秒设计，防止提前到100%
-        let simulatedStep = 1;
         const TOTAL_ESTIMATE_SECONDS = 120; // 预估总时间2分钟
+        
+        // ========== 复制自 Web App frontend_static/js/process.js ==========
+        // 预设日志（按时间顺序）- 与 Web App 完全一致
+        const engineLogs = [
+            { time: 500, log: '文件上传完成' },
+            { time: 1500, log: '检测文件格式...' },
+            { time: 3000, log: '启动智能清洗引擎...' },
+            { time: 5000, log: '加载高速读取模块...' },
+            { time: 7000, log: '正在识别表头结构...' },
+            { time: 9000, log: '检测到表头行' },
+            { time: 11000, log: '识别到标准格式 ✓' },
+            { time: 13000, log: '智能识别列结构...' },
+            { time: 15000, log: '科目编码 → 识别成功' },
+            { time: 17000, log: '科目名称 → 识别成功' },
+            { time: 19000, log: '金额字段识别完成 ✓' },
+            { time: 21000, log: '数据标准化处理中...' },
+            { time: 24000, log: '格式规范化处理...' },
+            { time: 27000, log: '金额数据精度处理...' },
+            { time: 30000, log: '会计恒等式验证...' },
+            { time: 33000, log: '借贷平衡检查通过 ✓' },
+            { time: 35000, log: '数据清洗完成 ✓' },
+            { time: 38000, log: '初始化底稿引擎...' },
+            { time: 41000, log: '准备审计底稿模板...' },
+            { time: 44000, log: '写入公司名称...' },
+            { time: 46000, log: '写入审计截止日...' },
+            { time: 48000, log: '导入科目余额数据...' },
+            { time: 50000, log: '科目数据导入完成 ✓' },
+            { time: 53000, log: '查询工商信息...' },
+            { time: 56000, log: '获取企业基本信息...' },
+            { time: 59000, log: '写入工商基本信息 ✓' },
+            { time: 62000, log: '生成科目明细表...' },
+            { time: 66000, log: '处理科目余额数据...' },
+            { time: 70000, log: '科目明细表完成 ✓' },
+            { time: 73000, log: '底稿工作表分配中...' },
+            { time: 77000, log: '分配审计程序表...' },
+            { time: 81000, log: '生成资产类底稿...' },
+            { time: 85000, log: '生成负债类底稿...' },
+            { time: 88000, log: '生成权益类底稿...' },
+            { time: 91000, log: '生成损益类底稿...' },
+            { time: 94000, log: '底稿分配完成 ✓' },
+            { time: 97000, log: '科目名称智能匹配...' },
+            { time: 101000, log: '科目映射完成 ✓' },
+            { time: 104000, log: '生成财审报告...' },
+            { time: 108000, log: '报告数据汇总中...' },
+            { time: 112000, log: '财审报告完成 ✓' },
+            { time: 115000, log: '执行数据质检...' },
+            { time: 119000, log: '勾稽检查完成 ✓' },
+            { time: 122000, log: '生成检查报告...' },
+            { time: 126000, log: '检查报告完成 ✓' },
+            { time: 130000, log: '导出PDF文件...' },
+            { time: 135000, log: '生成审计报告PDF...' },
+            { time: 140000, log: 'PDF导出完成 ✓' },
+            { time: 145000, log: '保存所有文件...' },
+        ];
+        
+        let logAnimationTimeouts = [];
+        
+        // 启动日志动画 - 复制自 Web App
+        function startLogsAnimation() {
+            // 清除之前的定时器
+            logAnimationTimeouts.forEach(t => clearTimeout(t));
+            logAnimationTimeouts = [];
+            
+            // 按时间顺序显示日志
+            engineLogs.forEach(item => {
+                const timeout = setTimeout(() => {
+                    addLogLine(item.log);
+                }, item.time);
+                logAnimationTimeouts.push(timeout);
+            });
+        }
+        
+        // 停止日志动画
+        function stopLogsAnimation() {
+            logAnimationTimeouts.forEach(t => clearTimeout(t));
+            logAnimationTimeouts = [];
+        }
+        // ========== END 复制自 Web App ==========
         
         function simulateProgress() {
             const elapsed = (Date.now() - state.startTime) / 1000;
-            // 计算百分比，最多到95%（留给完成时到4）
+            // 计算百分比，最多到95%（留给完成时到100%）
             const progressPercent = Math.min(95, Math.round((elapsed / TOTAL_ESTIMATE_SECONDS) * 100));
             
-            // 根据时间更新步骤和日志
-            if (elapsed >= 5 && elapsed < 20 && simulatedStep < 2) {
-                simulatedStep = 2;
-                updateProgress('clean', progressPercent, '🧹 开始智能清洗...');
-                addLogLine('📊 识别科目余额表格式');
-                addLogLine('📄 提取公司名称...');
-            } else if (elapsed >= 20 && elapsed < 45 && simulatedStep < 3) {
-                simulatedStep = 3;
-                updateProgress('km', progressPercent, '📝 生成KM表...');
-                addLogLine('✅ 清洗完成，共识别 156 个科目');
-                addLogLine('🏢 公司名称: ' + (state.companyName || '识别中...'));
-            } else if (elapsed >= 45 && elapsed < 75 && simulatedStep < 4) {
-                simulatedStep = 4;
-                updateProgress('allocate', progressPercent, '📋 分配工作底稿...');
-                addLogLine('📂 正在填充底稿模板');
-            } else if (elapsed >= 75 && simulatedStep < 5) {
-                updateProgress('report', progressPercent, '📄 生成审计报告...');
-                addLogLine('📑 调用 VBA 宏处理');
-            } else {
-                // 只更新进度条，不改变步骤
-                const bar = document.getElementById('progress-bar');
-                const percent = document.getElementById('progress-percent');
-                if (bar) bar.style.width = `${progressPercent}%`;
-                if (percent) percent.textContent = `${progressPercent}%`;
-            }
+            // 只更新进度条
+            const bar = document.getElementById('progress-bar');
+            const percent = document.getElementById('progress-percent');
+            if (bar) bar.style.width = `${progressPercent}%`;
+            if (percent) percent.textContent = `${progressPercent}%`;
         }
         
         function showCompletedResult(data) {
@@ -1751,21 +1841,21 @@
                         </p>
                     </div>
                     
-                    <!-- 四个下载卡片 -->
-                    <div class="grid grid-cols-2 gap-3 mb-4">
+                    <!-- 四个下载卡片 - 单列布局让文件名完整显示 -->
+                    <div class="grid grid-cols-1 gap-3 mb-4">
                         <!-- 财审底稿 -->
                         <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/workpaper" target="_blank"
-                           class="group flex items-center gap-3 p-4 bg-blue-500/5 hover:bg-blue-500/15 rounded-xl border border-blue-400/20 transition-all">
-                            <div class="w-11 h-11 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+                           class="group flex items-start gap-3 p-4 bg-blue-500/5 hover:bg-blue-500/15 rounded-xl border border-blue-400/20 transition-all">
+                            <div class="w-11 h-11 flex-shrink-0 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="font-semibold text-sm text-white">财审底稿</p>
-                                <p class="text-xs text-blue-400 truncate">【财审底稿】${displayName}.xlsm</p>
+                                <p class="text-xs text-blue-400 break-words">【财审底稿】${displayName}.xlsm</p>
                             </div>
-                            <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
+                            <div class="w-8 h-8 flex-shrink-0 bg-blue-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                                 </svg>
@@ -1774,17 +1864,17 @@
                         
                         <!-- 财审报告 -->
                         <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/audit_report_pdf" target="_blank"
-                           class="group flex items-center gap-3 p-4 bg-green-500/5 hover:bg-green-500/15 rounded-xl border border-green-400/20 transition-all">
-                            <div class="w-11 h-11 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
+                           class="group flex items-start gap-3 p-4 bg-green-500/5 hover:bg-green-500/15 rounded-xl border border-green-400/20 transition-all">
+                            <div class="w-11 h-11 flex-shrink-0 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                                 </svg>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="font-semibold text-sm text-white">财审报告</p>
-                                <p class="text-xs text-green-400 truncate">【财审报告】${displayName}.pdf</p>
+                                <p class="text-xs text-green-400 break-words">【财审报告】${displayName}.pdf</p>
                             </div>
-                            <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
+                            <div class="w-8 h-8 flex-shrink-0 bg-green-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                                 </svg>
@@ -1793,17 +1883,17 @@
                         
                         <!-- 检查报告 -->
                         <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/check_report_pdf" target="_blank"
-                           class="group flex items-center gap-3 p-4 bg-orange-500/5 hover:bg-orange-500/15 rounded-xl border border-orange-400/20 transition-all">
-                            <div class="w-11 h-11 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                           class="group flex items-start gap-3 p-4 bg-orange-500/5 hover:bg-orange-500/15 rounded-xl border border-orange-400/20 transition-all">
+                            <div class="w-11 h-11 flex-shrink-0 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
                                 </svg>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="font-semibold text-sm text-white">检查报告</p>
-                                <p class="text-xs text-orange-400 truncate">【检查报告】${displayName}.xlsx</p>
+                                <p class="text-xs text-orange-400 break-words">【检查报告】${displayName}.xlsx</p>
                             </div>
-                            <div class="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
+                            <div class="w-8 h-8 flex-shrink-0 bg-orange-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                                 </svg>
@@ -1812,17 +1902,17 @@
                         
                         <!-- 科目余额表 -->
                         <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/balance_cleaned" target="_blank"
-                           class="group flex items-center gap-3 p-4 bg-purple-500/5 hover:bg-purple-500/15 rounded-xl border border-purple-400/20 transition-all">
-                            <div class="w-11 h-11 bg-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+                           class="group flex items-start gap-3 p-4 bg-purple-500/5 hover:bg-purple-500/15 rounded-xl border border-purple-400/20 transition-all">
+                            <div class="w-11 h-11 flex-shrink-0 bg-purple-500 rounded-xl flex items-center justify-center shadow-lg">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
                                 </svg>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="font-semibold text-sm text-white">科目余额表</p>
-                                <p class="text-xs text-purple-400 truncate">【科目余额表】${displayName}.xlsx</p>
+                                <p class="text-xs text-purple-400 break-words">【科目余额表】${displayName}.xlsx</p>
                             </div>
-                            <div class="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
+                            <div class="w-8 h-8 flex-shrink-0 bg-purple-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                                 </svg>
@@ -1899,6 +1989,7 @@
                 
                 const data = await response.json();
                 state.taskId = data.task_id;
+                state.lastStep = ''; // 重置步骤追踪
                 
                 // 模拟上传文件状态
                 state.uploadedFiles = [
@@ -1909,7 +2000,10 @@
                 
                 // 显示进度卡片并开始轮询
                 showProgressCard();
+                addLogLine('🚀 启动 OpenCPAi 引擎...', 'info');
+                addLogLine(`📁 识别到 ${data.files?.length || 0} 个文件`, 'info');
                 startTimer();
+                startLogsAnimation(); // 启动日志动画（复制自Web App）
                 pollTaskStatus();
                 
             } catch (error) {

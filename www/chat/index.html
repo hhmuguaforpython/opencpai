@@ -1382,6 +1382,15 @@
             const secs = (elapsed % 60).toString().padStart(2, '0');
             const timeStr = `${mins.toString().padStart(2, '0')}:${secs}`;
             
+            // 从后端响应获取公司名称和审计年度
+            const companyName = data.company_name || state.companyName || '未知公司';
+            const auditYear = data.audit_year || new Date().getFullYear().toString();
+            // 更新 state 以便其他地方使用
+            state.companyName = companyName;
+            
+            // 构建完整的文件名显示（带年度）
+            const displayName = `${companyName}(${auditYear})`;
+            
             const resultHtml = `
             <div id="result-card" class="message-fade-in flex gap-3">
                 <div class="flex flex-col items-center gap-1">
@@ -1415,7 +1424,7 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="font-semibold text-sm text-white">财审底稿</p>
-                                <p class="text-xs text-blue-400 truncate">【财审底稿】${state.companyName}.xlsm</p>
+                                <p class="text-xs text-blue-400 truncate">【财审底稿】${displayName}.xlsm</p>
                             </div>
                             <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1434,7 +1443,7 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="font-semibold text-sm text-white">财审报告</p>
-                                <p class="text-xs text-green-400 truncate">【财审报告】${state.companyName}.pdf</p>
+                                <p class="text-xs text-green-400 truncate">【财审报告】${displayName}.pdf</p>
                             </div>
                             <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1453,7 +1462,7 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="font-semibold text-sm text-white">检查报告</p>
-                                <p class="text-xs text-orange-400 truncate">【检查报告】${state.companyName}.xlsx</p>
+                                <p class="text-xs text-orange-400 truncate">【检查报告】${displayName}.xlsx</p>
                             </div>
                             <div class="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1472,7 +1481,7 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="font-semibold text-sm text-white">科目余额表</p>
-                                <p class="text-xs text-purple-400 truncate">【科目余额表】${state.companyName}.xlsx</p>
+                                <p class="text-xs text-purple-400 truncate">【科目余额表】${displayName}.xlsx</p>
                             </div>
                             <div class="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

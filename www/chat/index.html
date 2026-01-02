@@ -524,12 +524,60 @@
                 }
             }
             
-            // 提示下一步
-            if (state.uploadedFiles.length > 0) {
-                addMessage(`已上传 ${state.uploadedFiles.length} 个文件。\n\n请输入公司名称和审计截止日（如「联信智擎 2024-12-31」），然后说「开始审计」。`, 'assistant');
+            // 上传完成后，自动检测公司名称和审计截止日
+            if (state.taskId && state.uploadedFiles.length > 0) {
+                await detectCompanyInfo();
             }
             
             $fileInput.value = '';
+        }
+        
+        // 自动检测公司名称和审计截止日
+        async function detectCompanyInfo() {
+            try {
+                addMessage('🔍 正在识别公司信息...', 'assistant');
+                
+                const response = await fetch(`${CONFIG.backendUrl}/api/detect-company-name`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_id: state.taskId }),
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Detected company info:', data);
+                
+                // 保存检测结果
+                if (data.detected_name && data.detected_name !== '未知公司') {
+                    state.companyName = data.detected_name;
+                }
+                
+                // 审计截止日：如果检测到就用，否则默认 2025/12/31
+                if (data.detected_audit_date) {
+                    state.auditDate = data.detected_audit_date;
+                } else {
+                    state.auditDate = '2025/12/31';
+                }
+                
+                // 显示检测结果，让用户确认
+                if (state.companyName) {
+                    const confirmMsg = `📋 **已识别审计信息：**\n\n• 公司名称：${state.companyName}\n• 审计截止日：${state.auditDate}\n\n✅ 信息正确请说「**开始审计**」\n✏️ 需要修改请直接输入正确信息`;
+                    addMessage(confirmMsg, 'assistant');
+                } else {
+                    // 无法识别公司名称，请用户输入
+                    state.auditDate = '2025/12/31';
+                    addMessage(`📋 已上传 ${state.uploadedFiles.length} 个文件。\n\n未能自动识别公司名称，请输入：\n例如「**深圳联兴 2024-12-31**」`, 'assistant');
+                }
+                
+            } catch (error) {
+                console.error('Detect company error:', error);
+                // 检测失败，使用默认值
+                state.auditDate = '2025/12/31';
+                addMessage(`已上传 ${state.uploadedFiles.length} 个文件。\n\n请输入公司名称，例如「联信智擎」，然后说「开始审计」。`, 'assistant');
+            }
         }
         
         async function uploadFile(file) {

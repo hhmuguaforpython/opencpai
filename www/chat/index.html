@@ -166,7 +166,7 @@
                     </div>
                     
                     <h1 class="text-2xl font-semibold mb-2">你好，我是 Jenny</h1>
-                    <p class="text-gray-400 mb-8">OpenCPAi 审计助手，帮你自动生成审计底稿</p>
+                    <p class="text-gray-400 mb-8">智能辅助审计助手，启动 OpenCPAi 引擎自动生成底稿</p>
                     
                     <!-- Quick Actions -->
                     <div class="grid grid-cols-2 gap-3 max-w-md mx-auto mb-8">
@@ -185,7 +185,7 @@
                     <!-- Suggested Prompts -->
                     <div class="flex flex-wrap justify-center gap-2">
                         <button class="suggest-prompt px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-sm transition-colors">
-                            帮我生成审计底稿
+                            🚀 启动 OpenCPAi 引擎
                         </button>
                         <button class="suggest-prompt px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-sm transition-colors">
                             如何使用？
@@ -224,7 +224,7 @@
                     <!-- Text Input -->
                     <div class="flex-1 relative">
                         <textarea id="chat-input" 
-                                  placeholder="输入消息，或上传审计文件..." 
+                                  placeholder="输入消息，或上传文件..." 
                                   rows="1"
                                   class="w-full bg-bg-input border border-white/10 rounded-2xl px-4 py-3 pr-12 text-sm resize-none 
                                          focus:outline-none focus:border-accent-blue/50 focus:ring-2 focus:ring-accent-blue/20
@@ -397,11 +397,11 @@
                 switch (data.intent) {
                     case 'start_audit':
                         if (state.uploadedFiles.length === 0) {
-                            addMessage('请先上传审计文件（科目余额表、序时账等），我需要这些数据来生成底稿。', 'assistant');
+                            addMessage('请先上传文件（科目余额表、序时账等），我需要这些数据来生成底稿。', 'assistant');
                         } else if (!state.companyName) {
                             addMessage('请提供公司名称，例如输入「联信智擎」', 'assistant');
                         } else {
-                            addMessage(data.response || '正在启动审计任务...', 'assistant');
+                            addMessage(data.response || '🚀 正在启动 OpenCPAi 引擎...', 'assistant');
                             await startAuditPipeline();
                         }
                         break;
@@ -435,10 +435,10 @@
                 state.auditDate = info.date;
             }
             
-            // 开始审计意图
-            if (msg.includes('开始') && (msg.includes('审计') || msg.includes('生成'))) {
+            // 确认生成/启动引擎意图
+            if ((msg.includes('确认') && msg.includes('生成')) || (msg.includes('启动') && msg.includes('引擎')) || (msg.includes('开始') && msg.includes('生成'))) {
                 if (state.uploadedFiles.length === 0) {
-                    addMessage('请先上传审计文件（科目余额表、序时账等），我需要这些数据来生成底稿。', 'assistant');
+                    addMessage('请先上传文件（科目余额表、序时账等），我需要这些数据来生成底稿。', 'assistant');
                     return;
                 }
                 if (!state.companyName) {
@@ -451,18 +451,18 @@
             
             // 设置公司信息
             if (info) {
-                addMessage(`已记录：\n• 公司：${info.company}\n• 审计截止日：${info.date}\n\n${state.uploadedFiles.length > 0 ? '说「开始审计」即可生成底稿。' : '请上传审计文件。'}`, 'assistant');
+                addMessage(`已记录：\n• 公司：${info.company}\n• 截止日期：${info.date}\n\n${state.uploadedFiles.length > 0 ? '说「**确认生成**」启动 OpenCPAi 引擎。' : '请上传文件。'}`, 'assistant');
                 return;
             }
             
             // 帮助
             if (msg.includes('如何') || msg.includes('帮助') || msg.includes('使用')) {
-                addMessage(`**使用流程：**\n\n1. 📤 上传文件\n2. 📝 输入公司名称和日期\n3. 🚀 说「开始审计」`, 'assistant');
+                addMessage(`**使用流程：**\n\n1. 📤 上传文件（科目余额表等）\n2. 📝 确认公司名称和日期\n3. 🚀 说「**确认生成**」启动 OpenCPAi 引擎`, 'assistant');
                 return;
             }
             
             // 默认回复
-            addMessage('我是 Jenny，专门帮你生成审计底稿。你可以：\n\n• 上传审计文件\n• 输入公司名和日期\n• 说「开始审计」', 'assistant');
+            addMessage('我是 Jenny，智能辅助审计助手。你可以：\n\n• 📤 上传文件（科目余额表等）\n• 📝 确认公司信息\n• 🚀 说「**确认生成**」启动 OpenCPAi 引擎', 'assistant');
         }
         
         // 思考状态指示器
@@ -564,19 +564,19 @@
                 
                 // 显示检测结果，让用户确认
                 if (state.companyName) {
-                    const confirmMsg = `📋 **已识别审计信息：**\n\n• 公司名称：${state.companyName}\n• 审计截止日：${state.auditDate}\n\n✅ 信息正确请说「**开始审计**」\n✏️ 需要修改请直接输入正确信息`;
+                    const confirmMsg = `📋 **已识别信息：**\n\n• 公司名称：${state.companyName}\n• 截止日期：${state.auditDate}\n\n✅ 信息正确请说「**确认生成**」启动 OpenCPAi 引擎\n✏️ 需要修改请直接输入正确信息`;
                     addMessage(confirmMsg, 'assistant');
                 } else {
                     // 无法识别公司名称，请用户输入
                     state.auditDate = '2025/12/31';
-                    addMessage(`📋 已上传 ${state.uploadedFiles.length} 个文件。\n\n未能自动识别公司名称，请输入：\n例如「**深圳联兴 2024-12-31**」`, 'assistant');
+                    addMessage(`📋 已上传 ${state.uploadedFiles.length} 个文件。\n\n未能自动识别公司名称，请输入公司名称：\n例如「**深圳联兴**」，然后说「**确认生成**」`, 'assistant');
                 }
                 
             } catch (error) {
                 console.error('Detect company error:', error);
                 // 检测失败，使用默认值
                 state.auditDate = '2025/12/31';
-                addMessage(`已上传 ${state.uploadedFiles.length} 个文件。\n\n请输入公司名称，例如「联信智擎」，然后说「开始审计」。`, 'assistant');
+                addMessage(`已上传 ${state.uploadedFiles.length} 个文件。\n\n请输入公司名称，例如「联信智擎」，然后说「**确认生成**」启动引擎。`, 'assistant');
             }
         }
         
@@ -677,7 +677,7 @@
                     <!-- 标题和计时器 -->
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
-                            <span class="text-base font-medium">🚀 正在为「${state.companyName}」生成底稿</span>
+                            <span class="text-base font-medium">🚀 OpenCPAi 引擎正在为「${state.companyName}」生成底稿</span>
                         </div>
                         <div class="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-lg">
                             <div id="timer-dot" class="w-2 h-2 bg-green-500 rounded-full timer-pulse"></div>
@@ -887,7 +887,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                             </svg>
                         </div>
-                        <h3 class="text-lg font-semibold mb-1">🎉 底稿生成完成！</h3>
+                        <h3 class="text-lg font-semibold mb-1">🎉 OpenCPAi 引擎完成！</h3>
                         <p class="text-sm text-gray-400">耗时 ${timeStr} · ${state.companyName}</p>
                     </div>
                     
@@ -963,11 +963,11 @@
         // =====================================================
         async function startDemoMode() {
             showChatMode();
-            addMessage('🎯 已进入演示模式，使用示例公司数据...', 'assistant');
+            addMessage('🎯 已进入演示模式，使用示例公司数据，启动 OpenCPAi 引擎...', 'assistant');
             
             // 设置演示公司信息
             state.companyName = '联信智擎（深圳）科技有限公司';
-            state.auditDate = '2024/12/31';
+            state.auditDate = '2025/12/31';
             state.isProcessing = true;
             state.startTime = Date.now();
             
@@ -1004,7 +1004,7 @@
                 pollTaskStatus();
                 
             } catch (error) {
-                addMessage(`❌ 演示模式启动失败：${error.message}\n\n请检查后端服务是否正常运行。`, 'assistant');
+                addMessage(`❌ OpenCPAi 引擎启动失败：${error.message}\n\n请检查后端服务是否正常运行。`, 'assistant');
                 state.isProcessing = false;
             }
         }
@@ -1125,7 +1125,7 @@
             if (!date && company.length >= 2 && !company.includes('？') && !company.includes('?')) {
                 const companyKeywords = ['公司', '有限', '集团', '科技', '控股', '事务所', '合伙'];
                 if (companyKeywords.some(k => company.includes(k))) {
-                    return { company, date: '2024/12/31' };  // 默认使用2024年底
+                    return { company, date: '2025/12/31' };  // 默认使用2025年底
                 }
             }
             

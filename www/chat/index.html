@@ -1631,14 +1631,10 @@
             const logContent = document.getElementById('log-content');
             if (!logContent) return;
             
-            // 生成时间戳
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
-            
             const line = document.createElement('div');
             line.className = `log-line ${type} flex items-start gap-2`;
             line.innerHTML = `
-                <span class="text-gray-500 text-xs font-mono flex-shrink-0 w-16">${timeStr}</span>
+                <span class="text-blue-400 flex-shrink-0">➜</span>
                 <span>${message}</span>
             `;
             logContent.appendChild(line);
@@ -1841,81 +1837,61 @@
                         </p>
                     </div>
                     
-                    <!-- 四个下载卡片 - 单列布局让文件名完整显示 -->
-                    <div class="grid grid-cols-1 gap-3 mb-4">
+                    <!-- 四个下载卡片 - 2x2布局，卡片加高 -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
                         <!-- 财审底稿 -->
                         <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/workpaper" target="_blank"
-                           class="group flex items-start gap-3 p-4 bg-blue-500/5 hover:bg-blue-500/15 rounded-xl border border-blue-400/20 transition-all">
-                            <div class="w-11 h-11 flex-shrink-0 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+                           class="group flex flex-col gap-3 p-4 min-h-[100px] bg-blue-500/5 hover:bg-blue-500/15 rounded-xl border border-blue-400/20 transition-all">
+                            <div class="w-10 h-10 flex-shrink-0 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
                             </div>
-                            <div class="flex-1 min-w-0">
+                            <div class="flex-1">
                                 <p class="font-semibold text-sm text-white">财审底稿</p>
-                                <p class="text-xs text-blue-400 break-words">【财审底稿】${displayName}.xlsm</p>
-                            </div>
-                            <div class="w-8 h-8 flex-shrink-0 bg-blue-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
-                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                </svg>
+                                <p class="text-xs text-blue-400 break-words mt-1">【财审底稿】${displayName}.xlsm</p>
                             </div>
                         </a>
                         
                         <!-- 财审报告 -->
                         <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/audit_report_pdf" target="_blank"
-                           class="group flex items-start gap-3 p-4 bg-green-500/5 hover:bg-green-500/15 rounded-xl border border-green-400/20 transition-all">
-                            <div class="w-11 h-11 flex-shrink-0 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
+                           class="group flex flex-col gap-3 p-4 min-h-[100px] bg-green-500/5 hover:bg-green-500/15 rounded-xl border border-green-400/20 transition-all">
+                            <div class="w-10 h-10 flex-shrink-0 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                                 </svg>
                             </div>
-                            <div class="flex-1 min-w-0">
+                            <div class="flex-1">
                                 <p class="font-semibold text-sm text-white">财审报告</p>
-                                <p class="text-xs text-green-400 break-words">【财审报告】${displayName}.pdf</p>
-                            </div>
-                            <div class="w-8 h-8 flex-shrink-0 bg-green-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
-                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                </svg>
+                                <p class="text-xs text-green-400 break-words mt-1">【财审报告】${displayName}.pdf</p>
                             </div>
                         </a>
                         
                         <!-- 检查报告 -->
                         <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/check_report_pdf" target="_blank"
-                           class="group flex items-start gap-3 p-4 bg-orange-500/5 hover:bg-orange-500/15 rounded-xl border border-orange-400/20 transition-all">
-                            <div class="w-11 h-11 flex-shrink-0 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                           class="group flex flex-col gap-3 p-4 min-h-[100px] bg-orange-500/5 hover:bg-orange-500/15 rounded-xl border border-orange-400/20 transition-all">
+                            <div class="w-10 h-10 flex-shrink-0 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
                                 </svg>
                             </div>
-                            <div class="flex-1 min-w-0">
+                            <div class="flex-1">
                                 <p class="font-semibold text-sm text-white">检查报告</p>
-                                <p class="text-xs text-orange-400 break-words">【检查报告】${displayName}.xlsx</p>
-                            </div>
-                            <div class="w-8 h-8 flex-shrink-0 bg-orange-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
-                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                </svg>
+                                <p class="text-xs text-orange-400 break-words mt-1">【检查报告】${displayName}.xlsx</p>
                             </div>
                         </a>
                         
                         <!-- 科目余额表 -->
                         <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/balance_cleaned" target="_blank"
-                           class="group flex items-start gap-3 p-4 bg-purple-500/5 hover:bg-purple-500/15 rounded-xl border border-purple-400/20 transition-all">
-                            <div class="w-11 h-11 flex-shrink-0 bg-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+                           class="group flex flex-col gap-3 p-4 min-h-[100px] bg-purple-500/5 hover:bg-purple-500/15 rounded-xl border border-purple-400/20 transition-all">
+                            <div class="w-10 h-10 flex-shrink-0 bg-purple-500 rounded-xl flex items-center justify-center shadow-lg">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
                                 </svg>
                             </div>
-                            <div class="flex-1 min-w-0">
+                            <div class="flex-1">
                                 <p class="font-semibold text-sm text-white">科目余额表</p>
-                                <p class="text-xs text-purple-400 break-words">【科目余额表】${displayName}.xlsx</p>
-                            </div>
-                            <div class="w-8 h-8 flex-shrink-0 bg-purple-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
-                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                </svg>
+                                <p class="text-xs text-purple-400 break-words mt-1">【科目余额表】${displayName}.xlsx</p>
                             </div>
                         </a>
                     </div>

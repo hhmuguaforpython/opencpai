@@ -1136,7 +1136,7 @@
                     <!-- 标题和计时器 -->
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
-                            <span class="text-base font-medium">🚀 OpenCPAi 引擎正在为「${state.companyName}」生成底稿</span>
+                            <span id="progress-title" class="text-base font-medium">🚀 OpenCPAi 引擎正在为「<span id="progress-company">${state.companyName || '...'}</span>」生成底稿</span>
                         </div>
                         <div class="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-lg">
                             <div id="timer-dot" class="w-2 h-2 bg-green-500 rounded-full timer-pulse"></div>
@@ -1304,6 +1304,15 @@
             try {
                 const response = await fetch(`${CONFIG.backendUrl}/api/status/${state.taskId}`);
                 const data = await response.json();
+                
+                // 动态更新公司名称（后端识别后返回）
+                if (data.company_name && data.company_name !== state.companyName) {
+                    state.companyName = data.company_name;
+                    const $companySpan = document.getElementById('progress-company');
+                    if ($companySpan) {
+                        $companySpan.textContent = data.company_name;
+                    }
+                }
                 
                 // 根据状态更新进度
                 if (data.current_step) {

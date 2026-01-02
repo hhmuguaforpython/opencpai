@@ -1340,25 +1340,39 @@
         }
         
         // 模拟进度（当后端没有返回详细步骤时）
+        // 按120秒设计，防止提前到100%
         let simulatedStep = 1;
+        const TOTAL_ESTIMATE_SECONDS = 120; // 预估总时间2分钟
+        
         function simulateProgress() {
             const elapsed = (Date.now() - state.startTime) / 1000;
+            // 计算百分比，最多到95%（留给完成时到4）
+            const progressPercent = Math.min(95, Math.round((elapsed / TOTAL_ESTIMATE_SECONDS) * 100));
             
-            if (elapsed > 5 && simulatedStep < 2) {
+            // 根据时间更新步骤和日志
+            if (elapsed >= 5 && elapsed < 20 && simulatedStep < 2) {
                 simulatedStep = 2;
-                updateProgress('clean', 25, '🧹 开始智能清洗...');
+                updateProgress('clean', progressPercent, '🧹 开始智能清洗...');
                 addLogLine('📊 识别科目余额表格式');
-            } else if (elapsed > 15 && simulatedStep < 3) {
+                addLogLine('📄 提取公司名称...');
+            } else if (elapsed >= 20 && elapsed < 45 && simulatedStep < 3) {
                 simulatedStep = 3;
-                updateProgress('km', 50, '📝 生成KM表...');
+                updateProgress('km', progressPercent, '📝 生成KM表...');
                 addLogLine('✅ 清洗完成，共识别 156 个科目');
-            } else if (elapsed > 30 && simulatedStep < 4) {
+                addLogLine('🏢 公司名称: ' + (state.companyName || '识别中...'));
+            } else if (elapsed >= 45 && elapsed < 75 && simulatedStep < 4) {
                 simulatedStep = 4;
-                updateProgress('allocate', 70, '📋 分配工作底稿...');
+                updateProgress('allocate', progressPercent, '📋 分配工作底稿...');
                 addLogLine('📂 正在填充底稿模板');
-            } else if (elapsed > 45 && simulatedStep < 5) {
-                updateProgress('allocate', 85, '📄 生成审计报告...');
+            } else if (elapsed >= 75 && simulatedStep < 5) {
+                updateProgress('report', progressPercent, '📄 生成审计报告...');
                 addLogLine('📑 调用 VBA 宏处理');
+            } else {
+                // 只更新进度条，不改变步骤
+                const bar = document.getElementById('progress-bar');
+                const percent = document.getElementById('progress-percent');
+                if (bar) bar.style.width = `${progressPercent}%`;
+                if (percent) percent.textContent = `${progressPercent}%`;
             }
         }
         
@@ -1469,8 +1483,8 @@
                     </div>
                     
                     <!-- 底部按钮 -->
-                    <div class="flex gap-3 mt-4">
-                        <button onclick="downloadAllFiles()" class="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-xl font-medium transition-all">
+                    <div class="flex gap-3 mt-4 justify-center">
+                        <button onclick="downloadAllFiles()" class="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-xl font-medium transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                             </svg>

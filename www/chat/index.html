@@ -319,17 +319,34 @@
         async function processIntent(message) {
             const msg = message.toLowerCase();
             
-            // 开始审计
-            if (msg.includes('开始') || msg.includes('生成') || msg.includes('审计')) {
+            // 1. 先尝试提取公司+日期信息（即使消息中包含「开始审计」）
+            const info = extractCompanyInfo(message);
+            if (info) {
+                state.companyName = info.company;
+                state.auditDate = info.date;
+            }
+            
+            // 2. 开始审计意图（包括「公司名 日期 开始审计」这种组合输入）
+            if (msg.includes('开始') && (msg.includes('审计') || msg.includes('生成'))) {
                 if (state.uploadedFiles.length === 0) {
                     addMessage('请先上传审计文件（科目余额表、序时账等），我需要这些数据来生成底稿。', 'assistant');
+                    return;
+                }
+                if (!state.companyName) {
+                    addMessage('请提供公司名称，例如输入「联信智擎」', 'assistant');
                     return;
                 }
                 await startAuditPipeline();
                 return;
             }
             
-            // 帮助
+            // 3. 如果只是设置了公司信息（没说开始审计）
+            if (info) {
+                addMessage(`已记录：\n• 公司：${info.company}\n• 审计截止日：${info.date}\n\n${state.uploadedFiles.length > 0 ? '说「开始审计」即可生成底稿。' : '请上传审计文件。'}`, 'assistant');
+                return;
+            }
+            
+            // 4. 帮助
             if (msg.includes('如何') || msg.includes('帮助') || msg.includes('使用')) {
                 addMessage(`**使用流程：**
 
@@ -346,22 +363,13 @@
                 return;
             }
             
-            // 格式
+            // 5. 格式
             if (msg.includes('格式') || msg.includes('支持')) {
                 addMessage('支持 Excel 文件 (.xlsx, .xls) 和压缩包 (.zip, .rar)。建议将所有文件打包成 ZIP 一次性上传。', 'assistant');
                 return;
             }
             
-            // 提取公司信息
-            const info = extractCompanyInfo(message);
-            if (info) {
-                state.companyName = info.company;
-                state.auditDate = info.date;
-                addMessage(`已记录：\n• 公司：${info.company}\n• 审计截止日：${info.date}\n\n${state.uploadedFiles.length > 0 ? '说「开始审计」即可生成底稿。' : '请上传审计文件。'}`, 'assistant');
-                return;
-            }
-            
-            // 默认回复
+            // 6. 默认回复
             addMessage('我是 Jenny，专门帮你生成审计底稿。你可以：\n\n• 上传审计文件（点击附件按钮）\n• 输入「公司名 日期」设置信息\n• 说「开始审计」生成底稿', 'assistant');
         }
         
@@ -542,10 +550,51 @@
         // =====================================================
         // 演示模式
         // =====================================================
-        function startDemoMode() {
+        async function startDemoMode() {
             showChatMode();
-            addMessage('🎯 已进入演示模式，使用示例数据展示功能。', 'assistant');
-            addMessage('（演示功能开发中，敬请期待）', 'assistant');
+            addMessage('🎯 已进入演示模式，使用示例公司数据...', 'assistant');
+            
+            // 设置演示公司信息
+            state.companyName = '联信智擎（深圳）科技有限公司';
+            state.auditDate = '2024/12/31';
+            
+            try {
+                // 调用后端演示 API
+                addMessage('📤 正在加载示例数据...', 'assistant');
+                
+                const response = await fetch(`${CONFIG.backendUrl}/api/run-full-pipeline`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source: 'demo',  // 使用演示数据
+                        company_name: state.companyName,
+                        audit_end_date: state.auditDate,
+                    }),
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    throw new Error(error.detail || `HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                state.taskId = data.task_id;
+                
+                addMessage(`✅ 示例数据已加载\n• 公司：${state.companyName}\n• 截止日：${state.auditDate}\n\n⏳ 正在生成审计底稿...`, 'assistant');
+                
+                // 模拟上传文件状态
+                state.uploadedFiles = [
+                    { name: '科目余额表', category: '科目余额表' },
+                    { name: '序时账', category: '序时账' },
+                ];
+                updateUploadedFilesUI();
+                
+                // 开始轮询
+                pollTaskStatus();
+                
+            } catch (error) {
+                addMessage(`❌ 演示模式启动失败：${error.message}\n\n请检查后端服务是否正常运行。`, 'assistant');
+            }
         }
         
         // =====================================================
@@ -628,6 +677,7 @@
             let date = null;
             let company = message;
             
+            // 提取日期
             for (const pattern of datePatterns) {
                 const match = message.match(pattern);
                 if (match) {
@@ -637,15 +687,23 @@
                 }
             }
             
-            if (!date && company.length >= 2 && !company.includes('？')) {
-                const keywords = ['公司', '有限', '集团', '科技', '控股'];
-                if (keywords.some(k => company.includes(k)) || company.length >= 4) {
-                    return { company, date: new Date().toISOString().split('T')[0] };
-                }
+            // 清除多余的关键词（开始审计、生成底稿等）
+            const removeKeywords = ['开始审计', '开始', '审计', '生成底稿', '生成', '帮我', '请'];
+            for (const kw of removeKeywords) {
+                company = company.replace(new RegExp(kw, 'g'), '').trim();
             }
             
-            if (company && date) {
+            // 如果有日期，返回结果
+            if (date && company.length >= 2) {
                 return { company, date };
+            }
+            
+            // 如果没有日期但有公司名特征
+            if (!date && company.length >= 2 && !company.includes('？') && !company.includes('?')) {
+                const companyKeywords = ['公司', '有限', '集团', '科技', '控股', '事务所', '合伙'];
+                if (companyKeywords.some(k => company.includes(k))) {
+                    return { company, date: '2024/12/31' };  // 默认使用2024年底
+                }
             }
             
             return null;

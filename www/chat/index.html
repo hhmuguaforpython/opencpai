@@ -643,7 +643,16 @@
             if (!files || files.length === 0) return;
             
             showChatMode();
-            addMessage(`📤 正在上传 ${files.length} 个文件...`, 'assistant');
+            
+            // 显示带进度的上传状态卡片
+            const uploadCardId = 'upload-progress-card';
+            const uploadCardHtml = `
+                <div id="${uploadCardId}" class="space-y-3">
+                    <div class="font-medium">📤 正在上传 ${files.length} 个文件...</div>
+                    <div id="upload-file-list" class="space-y-2"></div>
+                </div>
+            `;
+            addMessageHTML(uploadCardHtml, 'assistant');
             
             // 收集所有文件的分类结果
             const classifiedFiles = {
@@ -653,9 +662,31 @@
                 prior_report: null, // 上年审计报告
             };
             
+            const $fileList = document.getElementById('upload-file-list');
+            let fileIndex = 0;
+            
             for (const file of files) {
+                fileIndex++;
+                const fileItemId = `upload-file-${fileIndex}`;
+                const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+                
+                // 添加该文件的进度行
+                const fileItemHtml = `
+                    <div id="${fileItemId}" class="bg-white/5 rounded-lg p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm truncate flex-1" title="${file.name}">📄 ${fileIndex}、${file.name}</span>
+                            <span id="${fileItemId}-status" class="text-xs text-gray-400">${fileSizeMB}MB</span>
+                        </div>
+                        <div class="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div id="${fileItemId}-bar" class="h-full bg-gradient-to-r from-accent-purple to-accent-blue rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                `;
+                $fileList.insertAdjacentHTML('beforeend', fileItemHtml);
+                scrollToBottom();
+                
                 try {
-                    const result = await uploadFile(file);
+                    const result = await uploadFileWithProgress(file, fileItemId);
                     
                     if (result.task_id) {
                         state.taskId = result.task_id;
@@ -922,6 +953,67 @@
             }
         }
         
+        // 带进度的文件上传（使用XMLHttpRequest支持progress事件）
+        function uploadFileWithProgress(file, fileItemId) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                // 如果已有task_id，传递它以便追加文件到同一个任务
+                if (state.taskId) {
+                    formData.append('task_id', state.taskId);
+                }
+                
+                const $bar = document.getElementById(`${fileItemId}-bar`);
+                const $status = document.getElementById(`${fileItemId}-status`);
+                
+                // 上传进度
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        if ($bar) $bar.style.width = `${percent}%`;
+                        if ($status) $status.textContent = `${percent}%`;
+                    }
+                };
+                
+                // 上传完成
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        if ($bar) $bar.style.width = '100%';
+                        if ($status) {
+                            $status.textContent = '✓ 完成';
+                            $status.className = 'text-xs text-green-400';
+                        }
+                        try {
+                            resolve(JSON.parse(xhr.responseText));
+                        } catch (e) {
+                            reject(new Error('解析响应失败'));
+                        }
+                    } else {
+                        if ($status) {
+                            $status.textContent = '✗ 失败';
+                            $status.className = 'text-xs text-red-400';
+                        }
+                        reject(new Error(`HTTP ${xhr.status}`));
+                    }
+                };
+                
+                // 上传错误
+                xhr.onerror = () => {
+                    if ($status) {
+                        $status.textContent = '✗ 网络错误';
+                        $status.className = 'text-xs text-red-400';
+                    }
+                    reject(new Error('网络错误'));
+                };
+                
+                xhr.open('POST', `${CONFIG.backendUrl}/api/upload-and-unpack`);
+                xhr.send(formData);
+            });
+        }
+        
+        // 原始上传函数（保留用于其他场景）
         async function uploadFile(file) {
             const formData = new FormData();
             formData.append('file', file);

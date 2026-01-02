@@ -1040,51 +1040,78 @@
             $fileInput.value = '';
         }
         
-        // 显示文件分类卡片（Web App 风格：简洁、美观）
-        // 上传后显示分类 → 后台自动识别公司名称 → 弹窗确认 → 启动
+        // 显示文件分类+公司确认（一步到位）
+        // 上传后：显示分类 + 公司信息 + 启动按钮（一个大卡片）
         function showFileCardsUI(classifiedFiles) {
             const hasBalance = classifiedFiles.balance !== null;
             
+            // 统计已上传的文件类型数量
+            const typeCount = [
+                classifiedFiles.balance,
+                classifiedFiles.journal,
+                classifiedFiles.statement?.length > 0,
+                classifiedFiles.prior_report
+            ].filter(Boolean).length;
+            
+            // 后台预加载公司信息，完成后更新卡片
+            preloadCompanyInfo().then(() => {
+                updateCompanyFields();
+            });
+            
             const html = `
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <div class="font-medium">📁 已识别文件</div>
-                        <span class="text-xs text-gray-400">共 ${state.uploadedFiles.length} 个</span>
-                    </div>
+                <div class="w-full max-w-lg space-y-4 p-5 rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5">
                     
-                    <!-- 文件分类卡片（Web App 风格：竖向列表，简洁）-->
-                    <div class="space-y-2">
-                        ${renderFileCardSimple('科目余额表', classifiedFiles.balance, 'required', '#3B82F6', '📊')}
-                        ${renderFileCardSimple('序时账', classifiedFiles.journal, 'optional', '#10B981', '📝')}
-                        ${renderFileCardSimple('财务报表', classifiedFiles.statement, 'optional', '#8B5CF6', '📈')}
-                        ${renderFileCardSimple('上年审计报告', classifiedFiles.prior_report, 'optional', '#F59E0B', '📋')}
-                    </div>
-                    
-                    <!-- 底部操作按钮 -->
-                    ${hasBalance ? `
-                        <div class="flex gap-2 pt-2">
-                            <button onclick="window.autoDetectAndConfirm()" class="flex-1 px-4 py-3 bg-gradient-to-r from-accent-purple to-accent-blue rounded-xl text-white font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2">
-                                <span>✓</span>
-                                <span>文件已齐全，继续</span>
-                            </button>
-                            <button onclick="window.addMoreFiles()" class="px-4 py-3 bg-white/10 rounded-xl text-gray-300 font-medium hover:bg-white/20 transition-all">
-                                + 继续上传
-                            </button>
+                    <!-- 标题栏 -->
+                    <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">📋</span>
+                            <span class="font-semibold text-lg">任务确认</span>
                         </div>
+                        <div class="flex items-center gap-2 text-sm">
+                            <span class="text-gray-400">已识别</span>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium ${typeCount >= 2 ? 'bg-green-500/30 text-green-300' : 'bg-yellow-500/30 text-yellow-300'}">${typeCount}/4 类</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 文件分类（横向紧凑展示）-->
+                    <div class="grid grid-cols-4 gap-2">
+                        ${renderFileChip('余额表', classifiedFiles.balance, true, '📊')}
+                        ${renderFileChip('序时账', classifiedFiles.journal, false, '📝')}
+                        ${renderFileChip('报表', classifiedFiles.statement?.length > 0 ? classifiedFiles.statement : null, false, '📈')}
+                        ${renderFileChip('上年报告', classifiedFiles.prior_report, false, '📋')}
+                    </div>
+                    
+                    <!-- 公司信息确认 -->
+                    <div class="space-y-3 pt-2">
+                        <div>
+                            <label class="text-sm text-gray-400 mb-1.5 block">公司名称 <span class="text-red-400">*</span></label>
+                            <input type="text" id="confirm-company-name" value="" 
+                                   placeholder="识别中..."
+                                   class="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple transition-all">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-400 mb-1.5 block">审计截止日</label>
+                            <input type="text" id="confirm-audit-date" value="2024/12/31" 
+                                   placeholder="如：2024/12/31"
+                                   class="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple transition-all">
+                        </div>
+                    </div>
+                    
+                    <!-- 启动按钮 -->
+                    ${hasBalance ? `
+                        <button onclick="window.confirmAndStart()" class="w-full px-4 py-3.5 bg-gradient-to-r from-accent-purple to-accent-blue rounded-xl text-white font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-accent-purple/20">
+                            <span>🚀</span>
+                            <span>启动 OpenCPAi 引擎</span>
+                        </button>
                     ` : `
-                        <div class="text-center text-yellow-400 text-sm">⚠️ 请先上传科目余额表（必填）</div>
+                        <div class="text-center text-yellow-400 text-sm py-2">⚠️ 请先上传科目余额表（必填）</div>
                     `}
                 </div>
             `;
             addMessageHTML(html, 'assistant');
-            
-            // ⭐ 如果有余额表，后台自动开始识别公司名称（预处理）
-            if (hasBalance) {
-                preloadCompanyInfo();
-            }
         }
         
-        // 后台预加载公司信息（不阻塞UI）
+        // 后台预加载公司信息
         let preloadedCompanyInfo = null;
         async function preloadCompanyInfo() {
             try {
@@ -1102,62 +1129,19 @@
             }
         }
         
-        // 自动检测并显示确认弹窗
-        window.autoDetectAndConfirm = async function() {
-            addMessage('✓ 文件已确认', 'user');
-            
-            // 如果预加载完成，直接使用；否则显示加载中
-            if (!preloadedCompanyInfo) {
-                addMessage('🔍 正在识别公司信息...', 'assistant');
-                await preloadCompanyInfo();
-            }
-            
-            // 获取识别结果
+        // 更新公司信息字段
+        function updateCompanyFields() {
             const info = preloadedCompanyInfo || {};
-            const companyName = info.detected_name || '';
-            const auditDate = normalizeDate(info.detected_audit_date) || '2024/12/31';
+            const companyInput = document.getElementById('confirm-company-name');
+            const dateInput = document.getElementById('confirm-audit-date');
             
-            // 显示确认弹窗
-            showConfirmDialog(companyName, auditDate);
-        };
-        
-        // 显示确认弹窗（公司名称 + 审计截止日 + 启动按钮）
-        function showConfirmDialog(companyName, auditDate) {
-            const hasCompany = companyName && companyName !== '未知公司';
-            const borderColor = hasCompany ? 'border-green-500/50 bg-green-500/10' : 'border-yellow-500/50 bg-yellow-500/10';
-            const icon = hasCompany ? '✓' : '⚠️';
-            const iconColor = hasCompany ? 'text-green-400' : 'text-yellow-400';
-            const title = hasCompany ? '已识别公司信息' : '请确认公司信息';
-            
-            const html = `
-                <div class="space-y-4 p-4 rounded-xl border-2 ${borderColor}">
-                    <div class="flex items-center gap-2 ${iconColor}">
-                        <span class="text-lg">${icon}</span>
-                        <span class="font-medium">${title}</span>
-                    </div>
-                    
-                    <div class="space-y-3">
-                        <div>
-                            <label class="text-sm text-gray-400 mb-1 block">公司名称 *</label>
-                            <input type="text" id="confirm-company-name" value="${companyName}" 
-                                   placeholder="请输入公司全称"
-                                   class="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple">
-                        </div>
-                        <div>
-                            <label class="text-sm text-gray-400 mb-1 block">审计截止日</label>
-                            <input type="text" id="confirm-audit-date" value="${auditDate}" 
-                                   placeholder="如：2024/12/31"
-                                   class="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple">
-                        </div>
-                    </div>
-                    
-                    <button onclick="window.confirmAndStart()" class="w-full px-4 py-3 bg-gradient-to-r from-accent-purple to-accent-blue rounded-xl text-white font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2">
-                        <span>🚀</span>
-                        <span>启动 OpenCPAi 引擎生成底稿</span>
-                    </button>
-                </div>
-            `;
-            addMessageHTML(html, 'assistant');
+            if (companyInput && info.detected_name) {
+                companyInput.value = info.detected_name;
+                companyInput.placeholder = '请输入公司全称';
+            }
+            if (dateInput && info.detected_audit_date) {
+                dateInput.value = normalizeDate(info.detected_audit_date) || '2024/12/31';
+            }
         }
         
         // 确认并启动
@@ -1167,6 +1151,7 @@
             
             if (!companyName) {
                 alert('请输入公司名称');
+                document.getElementById('confirm-company-name')?.focus();
                 return;
             }
             
@@ -1176,70 +1161,36 @@
             startAuditPipeline();
         };
         
-        // 渲染单个文件卡片（Web App 风格：简洁一行）
-        function renderFileCardSimple(category, fileData, type, color, icon) {
-            const isRequired = type === 'required';
+        // 渲染文件类型小标签（紧凑版）
+        function renderFileChip(label, fileData, isRequired, icon) {
             const hasFile = fileData !== null && (Array.isArray(fileData) ? fileData.length > 0 : true);
-            const files = Array.isArray(fileData) ? fileData : (fileData ? [fileData] : []);
+            const count = Array.isArray(fileData) ? fileData.length : (fileData ? 1 : 0);
             
             if (hasFile) {
-                // 简化文件名显示（只显示序号和简短名称）
-                const fileListHtml = files.map((name, idx) => {
-                    const shortName = simplifyFileName(name);
-                    return `<div class="text-sm text-gray-300">${idx + 1}、${shortName}</div>`;
-                }).join('');
-                
                 return `
-                    <div class="rounded-lg p-3 flex items-start gap-3" style="background: ${color}15; border-left: 3px solid ${color}">
-                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style="background: ${color}30">${icon}</div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="font-medium" style="color: ${color}">${category}</span>
-                                ${isRequired ? '<span class="text-xs bg-red-500/30 text-red-300 px-1.5 py-0.5 rounded">必填</span>' : '<span class="text-xs text-gray-500">可选</span>'}
-                            </div>
-                            ${fileListHtml}
-                        </div>
+                    <div class="rounded-lg p-2 text-center bg-green-500/20 border border-green-500/30">
+                        <div class="text-lg mb-0.5">${icon}</div>
+                        <div class="text-xs text-green-300 font-medium">${label}</div>
+                        ${count > 1 ? `<div class="text-xs text-green-400/70">×${count}</div>` : ''}
                     </div>
                 `;
             } else {
                 return `
-                    <div class="rounded-lg p-3 flex items-center gap-3 bg-white/5 border border-dashed border-white/20">
-                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-lg bg-white/10 text-gray-500">${icon}</div>
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2">
-                                <span class="text-gray-400">${category}</span>
-                                ${isRequired ? '<span class="text-xs bg-red-500/30 text-red-300 px-1.5 py-0.5 rounded">必填</span>' : '<span class="text-xs text-gray-500">可选</span>'}
-                            </div>
-                            <div class="text-xs text-gray-500">未上传</div>
-                        </div>
+                    <div class="rounded-lg p-2 text-center ${isRequired ? 'bg-red-500/10 border border-red-500/30' : 'bg-white/5 border border-white/10'}">
+                        <div class="text-lg mb-0.5 opacity-40">${icon}</div>
+                        <div class="text-xs ${isRequired ? 'text-red-300' : 'text-gray-500'}">${label}</div>
+                        ${isRequired ? '<div class="text-xs text-red-400">必填</div>' : ''}
                     </div>
                 `;
             }
         }
-        
-        // 简化文件名（去掉时间戳等冗余信息）
-        function simplifyFileName(name) {
-            if (!name) return '';
-            // 去掉常见的时间戳格式
-            let simplified = name
-                .replace(/^\d+[、．.]\s*/, '')  // 去掉序号
-                .replace(/\d{14}_?/g, '')       // 去掉14位时间戳
-                .replace(/\d{8}_?/g, '')        // 去掉8位日期
-                .replace(/-\d{14}/g, '')        // 去掉-时间戳
-                .replace(/_+/g, '_')            // 多个下划线变一个
-                .replace(/^_|_$/g, '')          // 去掉首尾下划线
-                .trim();
-            // 如果太长，截断
-            if (simplified.length > 30) {
-                const ext = simplified.match(/\.[^.]+$/)?.[0] || '';
-                simplified = simplified.slice(0, 25) + '...' + ext;
-            }
-            return simplified || name.slice(0, 30);
-        }
 
-        // 【保留旧函数兼容】
+        // 【兼容旧函数】
+        function renderFileCardSimple(category, fileData, type, color, icon) {
+            return renderFileChip(category, fileData, type === 'required', icon);
+        }
         function renderFileCard(category, fileNames, type, color) {
-            return renderFileCardSimple(category, fileNames, type, color, '📄');
+            return renderFileChip(category, fileNames, type === 'required', '📄');
         }
         
         // =====================================================

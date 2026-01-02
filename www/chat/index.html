@@ -317,16 +317,84 @@
         }
         
         async function processIntent(message) {
+            // 显示思考状态
+            showTypingIndicator();
+            
+            try {
+                // 调用 LLM 意图识别 API
+                const response = await fetch(`${CONFIG.backendUrl}/api/chat/intent`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        context: {
+                            uploaded_files: state.uploadedFiles.map(f => f.category || f.name),
+                            company_name: state.companyName,
+                            audit_date: state.auditDate,
+                        }
+                    }),
+                });
+                
+                hideTypingIndicator();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('LLM Intent:', data);
+                
+                // 更新状态
+                if (data.company_name) {
+                    state.companyName = data.company_name;
+                }
+                if (data.audit_date) {
+                    state.auditDate = data.audit_date;
+                }
+                
+                // 根据意图执行动作
+                switch (data.intent) {
+                    case 'start_audit':
+                        if (state.uploadedFiles.length === 0) {
+                            addMessage('请先上传审计文件（科目余额表、序时账等），我需要这些数据来生成底稿。', 'assistant');
+                        } else if (!state.companyName) {
+                            addMessage('请提供公司名称，例如输入「联信智擎」', 'assistant');
+                        } else {
+                            addMessage(data.response || '正在启动审计任务...', 'assistant');
+                            await startAuditPipeline();
+                        }
+                        break;
+                        
+                    case 'upload_file':
+                        addMessage(data.response || '请点击左下角附件按钮上传文件', 'assistant');
+                        break;
+                        
+                    default:
+                        // 其他意图直接显示 LLM 回复
+                        addMessage(data.response, 'assistant');
+                }
+                
+            } catch (error) {
+                hideTypingIndicator();
+                console.error('Intent API error:', error);
+                
+                // 降级到本地处理
+                processIntentLocal(message);
+            }
+        }
+        
+        // 本地意图处理（LLM 调用失败时的降级方案）
+        function processIntentLocal(message) {
             const msg = message.toLowerCase();
             
-            // 1. 先尝试提取公司+日期信息（即使消息中包含「开始审计」）
+            // 提取公司+日期信息
             const info = extractCompanyInfo(message);
             if (info) {
                 state.companyName = info.company;
                 state.auditDate = info.date;
             }
             
-            // 2. 开始审计意图（包括「公司名 日期 开始审计」这种组合输入）
+            // 开始审计意图
             if (msg.includes('开始') && (msg.includes('审计') || msg.includes('生成'))) {
                 if (state.uploadedFiles.length === 0) {
                     addMessage('请先上传审计文件（科目余额表、序时账等），我需要这些数据来生成底稿。', 'assistant');
@@ -336,41 +404,46 @@
                     addMessage('请提供公司名称，例如输入「联信智擎」', 'assistant');
                     return;
                 }
-                await startAuditPipeline();
+                startAuditPipeline();
                 return;
             }
             
-            // 3. 如果只是设置了公司信息（没说开始审计）
+            // 设置公司信息
             if (info) {
                 addMessage(`已记录：\n• 公司：${info.company}\n• 审计截止日：${info.date}\n\n${state.uploadedFiles.length > 0 ? '说「开始审计」即可生成底稿。' : '请上传审计文件。'}`, 'assistant');
                 return;
             }
             
-            // 4. 帮助
+            // 帮助
             if (msg.includes('如何') || msg.includes('帮助') || msg.includes('使用')) {
-                addMessage(`**使用流程：**
-
-1. 📤 **上传文件** - 点击左下角附件按钮，上传科目余额表、序时账等文件
-2. 📝 **确认信息** - 输入公司名称和审计截止日，如「联信智擎 2024-12-31」
-3. 🚀 **生成底稿** - 说「开始审计」，我会自动生成审计底稿
-
-**支持的文件：**
-- 科目余额表 (.xlsx)
-- 序时账/明细账 (.xlsx)
-- 财务报表 (.xlsx)
-- 上期审计报告 (.xlsx)
-- 压缩包 (.zip)`, 'assistant');
+                addMessage(`**使用流程：**\n\n1. 📤 上传文件\n2. 📝 输入公司名称和日期\n3. 🚀 说「开始审计」`, 'assistant');
                 return;
             }
             
-            // 5. 格式
-            if (msg.includes('格式') || msg.includes('支持')) {
-                addMessage('支持 Excel 文件 (.xlsx, .xls) 和压缩包 (.zip, .rar)。建议将所有文件打包成 ZIP 一次性上传。', 'assistant');
-                return;
-            }
-            
-            // 6. 默认回复
-            addMessage('我是 Jenny，专门帮你生成审计底稿。你可以：\n\n• 上传审计文件（点击附件按钮）\n• 输入「公司名 日期」设置信息\n• 说「开始审计」生成底稿', 'assistant');
+            // 默认回复
+            addMessage('我是 Jenny，专门帮你生成审计底稿。你可以：\n\n• 上传审计文件\n• 输入公司名和日期\n• 说「开始审计」', 'assistant');
+        }
+        
+        // 思考状态指示器
+        function showTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.id = 'typing-indicator';
+            indicator.className = 'message-fade-in flex gap-3';
+            indicator.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>
+                <div class="bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1">
+                    <span class="typing-dot w-2 h-2 bg-gray-400 rounded-full"></span>
+                    <span class="typing-dot w-2 h-2 bg-gray-400 rounded-full"></span>
+                    <span class="typing-dot w-2 h-2 bg-gray-400 rounded-full"></span>
+                </div>
+            `;
+            $messagesContainer.appendChild(indicator);
+            scrollToBottom();
+        }
+        
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) indicator.remove();
         }
         
         // =====================================================

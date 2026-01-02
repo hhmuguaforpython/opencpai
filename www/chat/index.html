@@ -244,26 +244,81 @@
             </div>
         </div>
         
-        <!-- User Section -->
-        <div class="p-3 border-t border-white/5">
-            <button id="sidebar-user-btn" onclick="window.openSettingsModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-gray-300 text-sm mb-2">
-                <div id="sidebar-user-avatar" class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-white font-medium text-sm">
+        <!-- User Section (ChatGPT Style) -->
+        <div class="p-3 border-t border-white/5 relative">
+            <!-- User Button - 点击弹出菜单 -->
+            <button id="sidebar-user-btn" onclick="window.toggleUserMenu()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 transition-colors text-gray-300 text-sm">
+                <div id="sidebar-user-avatar" class="w-9 h-9 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
                     C
                 </div>
-                <div class="flex-1 text-left">
-                    <div id="sidebar-user-name" class="font-medium">CPAier</div>
-                    <div class="text-xs text-gray-500">设置</div>
+                <div class="flex-1 text-left min-w-0">
+                    <div id="sidebar-user-name" class="font-medium truncate">CPAier</div>
+                    <div id="sidebar-user-plan" class="text-xs text-gray-500">免费版</div>
                 </div>
-                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
             </button>
-            <a href="../" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400 text-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-                返回官网
-            </a>
+            
+            <!-- User Dropdown Menu (ChatGPT Style) -->
+            <div id="user-menu" class="hidden absolute bottom-full left-3 right-3 mb-2 bg-zinc-800 rounded-xl border border-white/10 shadow-xl overflow-hidden z-50">
+                <!-- 用户信息头部 -->
+                <div class="px-4 py-3 border-b border-white/10">
+                    <div class="flex items-center gap-3">
+                        <div id="menu-user-avatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-white font-bold">
+                            C
+                        </div>
+                        <div>
+                            <div id="menu-user-name" class="font-medium text-white">CPAier</div>
+                            <div class="text-xs text-gray-400">@opencpai.com</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 菜单项 -->
+                <div class="py-1">
+                    <button onclick="window.showUpgradeToast()" class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors text-gray-300 text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                        </svg>
+                        <span>升级套餐</span>
+                    </button>
+                    <button onclick="window.showComingSoon('个性化')" class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors text-gray-300 text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>个性化</span>
+                    </button>
+                    <button onclick="window.closeUserMenu(); window.openSettingsModal();" class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors text-gray-300 text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span>设置</span>
+                    </button>
+                    <a href="https://docs.opencpai.com" target="_blank" class="w-full flex items-center justify-between px-4 py-2.5 hover:bg-white/5 transition-colors text-gray-300 text-sm">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span>帮助</span>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+                
+                <!-- 分隔线 -->
+                <div class="border-t border-white/10"></div>
+                
+                <!-- 退出登录 -->
+                <div class="py-1">
+                    <button onclick="window.showComingSoon('退出登录')" class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors text-gray-300 text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        <span>退出登录</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </aside>
     
@@ -2145,12 +2200,56 @@
             const nameEl = document.getElementById('sidebar-user-name');
             if (avatarEl) avatarEl.textContent = userName.charAt(0).toUpperCase();
             if (nameEl) nameEl.textContent = userName;
+            
+            // 同步更新菜单中的用户信息
+            const menuAvatarEl = document.getElementById('menu-user-avatar');
+            const menuNameEl = document.getElementById('menu-user-name');
+            if (menuAvatarEl) menuAvatarEl.textContent = userName.charAt(0).toUpperCase();
+            if (menuNameEl) menuNameEl.textContent = userName;
         }
         
         // 页面加载时初始化侧边栏用户信息
         document.addEventListener('DOMContentLoaded', function() {
             updateSidebarUser(getUserSettings());
         });
+        
+        // ============ 用户菜单控制 (ChatGPT Style) ============
+        window.toggleUserMenu = function() {
+            const menu = document.getElementById('user-menu');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                // 点击外部关闭
+                setTimeout(() => {
+                    document.addEventListener('click', closeUserMenuOnClickOutside);
+                }, 10);
+            } else {
+                closeUserMenu();
+            }
+        };
+        
+        window.closeUserMenu = function() {
+            const menu = document.getElementById('user-menu');
+            menu?.classList.add('hidden');
+            document.removeEventListener('click', closeUserMenuOnClickOutside);
+        };
+        
+        function closeUserMenuOnClickOutside(e) {
+            const menu = document.getElementById('user-menu');
+            const btn = document.getElementById('sidebar-user-btn');
+            if (menu && !menu.contains(e.target) && !btn.contains(e.target)) {
+                closeUserMenu();
+            }
+        }
+        
+        window.showUpgradeToast = function() {
+            closeUserMenu();
+            showToast('💎 付费功能开发中，敬请期待！');
+        };
+        
+        window.showComingSoon = function(feature) {
+            closeUserMenu();
+            showToast(`🚧 「${feature}」功能开发中，敬请期待！`);
+        };
         
         // 轻量级 Toast 提示
         function showToast(message) {

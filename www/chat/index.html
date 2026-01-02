@@ -166,7 +166,7 @@
                     </div>
                     
                     <h1 class="text-2xl font-semibold mb-2">你好，我是 Jenny</h1>
-                    <p class="text-gray-400 mb-8">智能辅助审计助手，启动 OpenCPAi 引擎自动生成底稿</p>
+                    <p class="text-gray-400 mb-8">OpenCPAi 智能辅助助手，一键生成财审底稿</p>
                     
                     <!-- Quick Actions -->
                     <div class="grid grid-cols-2 gap-3 max-w-md mx-auto mb-8">
@@ -462,7 +462,7 @@
             }
             
             // 默认回复
-            addMessage('我是 Jenny，智能辅助审计助手。你可以：\n\n• 📤 上传文件（科目余额表等）\n• 📝 确认公司信息\n• 🚀 说「**确认生成**」启动 OpenCPAi 引擎', 'assistant');
+            addMessage('我是 Jenny，OpenCPAi 智能辅助助手。你可以：\n\n• 📤 上传文件（科目余额表等）\n• 📝 确认公司信息\n• 🚀 说「**确认生成**」启动引擎', 'assistant');
         }
         
         // 思考状态指示器
@@ -870,8 +870,8 @@
         function showCompletedResult(data) {
             const elapsed = state.startTime ? Math.floor((Date.now() - state.startTime) / 1000) : 0;
             const mins = Math.floor(elapsed / 60);
-            const secs = elapsed % 60;
-            const timeStr = mins > 0 ? `${mins}分${secs}秒` : `${secs}秒`;
+            const secs = (elapsed % 60).toString().padStart(2, '0');
+            const timeStr = `${mins.toString().padStart(2, '0')}:${secs}`;
             
             const resultHtml = `
             <div id="result-card" class="message-fade-in flex gap-3">
@@ -879,75 +879,112 @@
                     <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>
                     <span class="text-xs text-gray-500">Jenny</span>
                 </div>
-                <div class="flex-1 max-w-2xl bg-white/5 rounded-2xl rounded-tl-sm p-5">
+                <div class="flex-1 max-w-2xl bg-gradient-to-b from-gray-800/50 to-gray-900/50 rounded-2xl rounded-tl-sm p-6 border border-white/10">
                     <!-- 成功图标 -->
-                    <div class="text-center mb-5">
-                        <div class="w-14 h-14 mx-auto bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mb-3 shadow-lg">
-                            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    <div class="text-center mb-6">
+                        <div class="w-16 h-16 mx-auto bg-green-500 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-green-500/30">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
                             </svg>
                         </div>
-                        <h3 class="text-lg font-semibold mb-1">🎉 OpenCPAi 引擎完成！</h3>
-                        <p class="text-sm text-gray-400">耗时 ${timeStr} · ${state.companyName}</p>
+                        <h3 class="text-xl font-bold mb-2">🎉 底稿生成完成！</h3>
+                        <p class="text-sm text-gray-400 flex items-center justify-center gap-2">
+                            <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                            总耗时: ${timeStr}
+                        </p>
                     </div>
                     
-                    <!-- 下载卡片 -->
-                    <div class="grid grid-cols-2 gap-3">
+                    <!-- 四个下载卡片 -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <!-- 财审底稿 -->
                         <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/workpaper" target="_blank"
-                           class="flex items-center gap-3 p-3 bg-blue-500/10 hover:bg-blue-500/20 rounded-xl border border-blue-500/20 transition-all hover:scale-[1.02]">
-                            <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center shadow">
+                           class="group flex items-center gap-3 p-4 bg-blue-500/5 hover:bg-blue-500/15 rounded-xl border border-blue-400/20 transition-all">
+                            <div class="w-11 h-11 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
                             </div>
-                            <div>
-                                <p class="font-medium text-sm">审计底稿</p>
-                                <p class="text-xs text-gray-500">.xlsm</p>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-sm text-white">财审底稿</p>
+                                <p class="text-xs text-blue-400 truncate">【财审底稿】${state.companyName}.xlsm</p>
+                            </div>
+                            <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
                             </div>
                         </a>
                         
+                        <!-- 财审报告 -->
                         <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/audit_report_pdf" target="_blank"
-                           class="flex items-center gap-3 p-3 bg-purple-500/10 hover:bg-purple-500/20 rounded-xl border border-purple-500/20 transition-all hover:scale-[1.02]">
-                            <div class="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center shadow">
+                           class="group flex items-center gap-3 p-4 bg-green-500/5 hover:bg-green-500/15 rounded-xl border border-green-400/20 transition-all">
+                            <div class="w-11 h-11 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                                 </svg>
                             </div>
-                            <div>
-                                <p class="font-medium text-sm">审计报告</p>
-                                <p class="text-xs text-gray-500">.pdf</p>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-sm text-white">财审报告</p>
+                                <p class="text-xs text-green-400 truncate">【财审报告】${state.companyName}.pdf</p>
+                            </div>
+                            <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
                             </div>
                         </a>
                         
+                        <!-- 检查报告 -->
                         <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/check_report_pdf" target="_blank"
-                           class="flex items-center gap-3 p-3 bg-green-500/10 hover:bg-green-500/20 rounded-xl border border-green-500/20 transition-all hover:scale-[1.02]">
-                            <div class="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center shadow">
+                           class="group flex items-center gap-3 p-4 bg-orange-500/5 hover:bg-orange-500/15 rounded-xl border border-orange-400/20 transition-all">
+                            <div class="w-11 h-11 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
                                 </svg>
                             </div>
-                            <div>
-                                <p class="font-medium text-sm">检查报告</p>
-                                <p class="text-xs text-gray-500">.pdf</p>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-sm text-white">检查报告</p>
+                                <p class="text-xs text-orange-400 truncate">【检查报告】${state.companyName}.xlsx</p>
+                            </div>
+                            <div class="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
                             </div>
                         </a>
                         
+                        <!-- 科目余额表 -->
                         <a href="${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/balance_cleaned" target="_blank"
-                           class="flex items-center gap-3 p-3 bg-gray-500/10 hover:bg-gray-500/20 rounded-xl border border-gray-500/20 transition-all hover:scale-[1.02]">
-                            <div class="w-10 h-10 bg-gray-500 rounded-lg flex items-center justify-center shadow">
+                           class="group flex items-center gap-3 p-4 bg-purple-500/5 hover:bg-purple-500/15 rounded-xl border border-purple-400/20 transition-all">
+                            <div class="w-11 h-11 bg-purple-500 rounded-xl flex items-center justify-center shadow-lg">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
                                 </svg>
                             </div>
-                            <div>
-                                <p class="font-medium text-sm">清洗数据</p>
-                                <p class="text-xs text-gray-500">.xlsx</p>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-sm text-white">科目余额表</p>
+                                <p class="text-xs text-purple-400 truncate">【科目余额表】${state.companyName}.xlsx</p>
+                            </div>
+                            <div class="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
                             </div>
                         </a>
                     </div>
                     
-                    <!-- 提示 -->
-                    <p class="text-xs text-gray-500 text-center mt-4">点击卡片即可下载对应文件</p>
+                    <!-- 底部按钮 -->
+                    <div class="flex gap-3 mt-4">
+                        <button onclick="downloadAllFiles()" class="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-xl font-medium transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            📦 一键下载全部
+                        </button>
+                        <button onclick="resetChat()" class="px-6 py-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 font-medium transition-all">
+                            + 处理新文件
+                        </button>
+                    </div>
                 </div>
             </div>`;
             
@@ -956,6 +993,16 @@
             
             // 重置模拟进度
             simulatedStep = 1;
+        }
+        
+        // 一键下载全部文件
+        function downloadAllFiles() {
+            const files = ['workpaper', 'audit_report_pdf', 'check_report_pdf', 'balance_cleaned'];
+            files.forEach((file, i) => {
+                setTimeout(() => {
+                    window.open(`${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/${file}`, '_blank');
+                }, i * 500);
+            });
         }
         
         // =====================================================

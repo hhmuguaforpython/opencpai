@@ -642,6 +642,11 @@
             const formData = new FormData();
             formData.append('file', file);
             
+            // 如果已有task_id，传递它以便追加文件到同一个任务
+            if (state.taskId) {
+                formData.append('task_id', state.taskId);
+            }
+            
             const response = await fetch(`${CONFIG.backendUrl}/api/upload-and-unpack`, {
                 method: 'POST',
                 body: formData,

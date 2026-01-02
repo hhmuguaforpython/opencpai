@@ -914,82 +914,27 @@
             
             showChatMode();
             
-            // 简洁的上传进度（单行，不列出文件名）
-            const totalSizeMB = Array.from(files).reduce((sum, f) => sum + f.size, 0) / 1024 / 1024;
-            const uploadCardHtml = `
-                <div id="upload-progress-card" class="bg-white/5 rounded-xl p-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">📤</span>
-                            <span class="font-medium">正在上传</span>
-                            <span class="text-accent-purple font-semibold">${files.length}</span>
-                            <span class="text-gray-400">个文件</span>
-                        </div>
-                        <span id="upload-percent" class="text-sm text-gray-400">0%</span>
-                    </div>
-                    <div class="h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div id="upload-bar" class="h-full bg-gradient-to-r from-accent-purple to-accent-blue rounded-full transition-all duration-300" style="width: 0%"></div>
-                    </div>
-                    <div class="flex justify-between mt-2 text-xs text-gray-500">
-                        <span>${totalSizeMB.toFixed(1)} MB</span>
-                        <span id="upload-status">上传中...</span>
-                    </div>
-                </div>
-            `;
-            addMessageHTML(uploadCardHtml, 'assistant');
-            scrollToBottom();
+            // 不在聊天区显示上传进度，直接更新底部标签栏
+            // 用户消息：简单提示
+            addMessage(`📤 上传 ${files.length} 个文件...`, 'user');
             
             try {
-                // 【关键优化】一次性上传所有文件（与 Web App 一致）
+                // 一次性上传所有文件
                 const formData = new FormData();
                 for (let i = 0; i < files.length; i++) {
-                    formData.append('files', files[i]);  // 注意：用 'files' 不是 'file'
+                    formData.append('files', files[i]);
                 }
                 
-                // 使用 XHR 以便追踪上传进度
-                const result = await new Promise((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    
-                    // 总进度
-                    xhr.upload.onprogress = (e) => {
-                        if (e.lengthComputable) {
-                            const percent = Math.round((e.loaded / e.total) * 100);
-                            const $bar = document.getElementById('upload-bar');
-                            const $percent = document.getElementById('upload-percent');
-                            if ($bar) $bar.style.width = `${percent}%`;
-                            if ($percent) $percent.textContent = `${percent}%`;
-                        }
-                    };
-                    
-                    xhr.onload = () => {
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            // 完成
-                            const $bar = document.getElementById('upload-bar');
-                            const $percent = document.getElementById('upload-percent');
-                            const $status = document.getElementById('upload-status');
-                            if ($bar) $bar.style.width = '100%';
-                            if ($percent) {
-                                $percent.textContent = '✓ 完成';
-                                $percent.className = 'text-sm text-green-400 font-medium';
-                            }
-                            if ($status) {
-                                $status.textContent = '上传成功，正在分类...';
-                            }
-                            try {
-                                resolve(JSON.parse(xhr.responseText));
-                            } catch (e) {
-                                reject(new Error('解析响应失败'));
-                            }
-                        } else {
-                            reject(new Error(`HTTP ${xhr.status}`));
-                        }
-                    };
-                    
-                    xhr.onerror = () => reject(new Error('网络错误'));
-                    
-                    xhr.open('POST', `${CONFIG.backendUrl}/api/upload-and-unpack`);
-                    xhr.send(formData);
+                const response = await fetch(`${CONFIG.backendUrl}/api/upload-and-unpack`, {
+                    method: 'POST',
+                    body: formData
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const result = await response.json();
                 
                 // 保存 task_id
                 if (result.task_id) {

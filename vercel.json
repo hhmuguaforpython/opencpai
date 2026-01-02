@@ -6,7 +6,8 @@
   "trailingSlash": false,
   "rewrites": [
     { "source": "/chat", "destination": "/chat/index.html" },
-    { "source": "/chat/", "destination": "/chat/index.html" }
+    { "source": "/chat/", "destination": "/chat/index.html" },
+    { "source": "/:path*", "has": [{ "type": "host", "value": "chat.opencpai.com" }], "destination": "/chat/index.html" }
   ],
   "headers": [
     {

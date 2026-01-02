@@ -669,14 +669,15 @@
                                 category_cn: f.category_cn || f.category,
                             });
                             
-                            // 按类型归类
+                            // 按类型归类（与 Web App 保持一致）
+                            // 后端返回: balance, journal, financial, statement, balance_sheet, profit_statement, audit_report, prior_report
                             if (f.category === 'balance') {
                                 classifiedFiles.balance = f.filename;
                             } else if (f.category === 'journal') {
                                 classifiedFiles.journal = f.filename;
-                            } else if (f.category === 'statement') {
+                            } else if (f.category === 'financial' || f.category === 'statement' || f.category === 'balance_sheet' || f.category === 'profit_statement') {
                                 classifiedFiles.statement.push(f.filename);
-                            } else if (f.category === 'prior_report') {
+                            } else if (f.category === 'audit_report' || f.category === 'prior_report' || f.category === 'audit') {
                                 classifiedFiles.prior_report = f.filename;
                             }
                         });

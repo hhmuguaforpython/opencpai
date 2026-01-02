@@ -246,12 +246,12 @@
         
         <!-- User Section -->
         <div class="p-3 border-t border-white/5">
-            <button onclick="window.openSettingsModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-gray-300 text-sm mb-2">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-white font-medium text-sm">
+            <button id="sidebar-user-btn" onclick="window.openSettingsModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-gray-300 text-sm mb-2">
+                <div id="sidebar-user-avatar" class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-white font-medium text-sm">
                     C
                 </div>
                 <div class="flex-1 text-left">
-                    <div class="font-medium">CPAier</div>
+                    <div id="sidebar-user-name" class="font-medium">CPAier</div>
                     <div class="text-xs text-gray-500">个人设置</div>
                 </div>
                 <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2131,9 +2131,26 @@
             saveUserSettings(settings);
             closeSettingsModal();
             
+            // 更新侧边栏用户显示
+            updateSidebarUser(settings);
+            
             // 显示保存成功提示
             showToast('✅ 设置已保存');
         };
+        
+        // 更新侧边栏用户信息显示
+        function updateSidebarUser(settings) {
+            const userName = settings?.userName || DEFAULT_USER_SETTINGS.userName;
+            const avatarEl = document.getElementById('sidebar-user-avatar');
+            const nameEl = document.getElementById('sidebar-user-name');
+            if (avatarEl) avatarEl.textContent = userName.charAt(0).toUpperCase();
+            if (nameEl) nameEl.textContent = userName;
+        }
+        
+        // 页面加载时初始化侧边栏用户信息
+        document.addEventListener('DOMContentLoaded', function() {
+            updateSidebarUser(getUserSettings());
+        });
         
         // 轻量级 Toast 提示
         function showToast(message) {

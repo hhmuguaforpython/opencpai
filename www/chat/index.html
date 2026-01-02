@@ -1041,14 +1041,31 @@
                 return;
             }
             
+            // 类别颜色和图标映射
+            const categoryStyles = {
+                'balance': { label: '科目余额表', color: '#3B82F6', icon: '📊' },
+                'journal': { label: '序时账', color: '#10B981', icon: '📝' },
+                'profit_statement': { label: '利润表', color: '#8B5CF6', icon: '📈' },
+                'balance_sheet': { label: '资产负债表', color: '#8B5CF6', icon: '📈' },
+                'statement': { label: '财务报表', color: '#8B5CF6', icon: '📈' },
+                'financial': { label: '财务报表', color: '#8B5CF6', icon: '📈' },
+                'audit_report': { label: '上年审计报告', color: '#F59E0B', icon: '📋' },
+                'prior_report': { label: '上年审计报告', color: '#F59E0B', icon: '📋' },
+                'pdf': { label: 'PDF文档', color: '#EF4444', icon: '📄' },
+                'excel': { label: 'Excel文件', color: '#22C55E', icon: '📄' },
+            };
+            
             $uploadedFiles.classList.remove('hidden');
-            $uploadedFiles.innerHTML = state.uploadedFiles.map((f, i) => `
-                <div class="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg text-sm">
-                    <span>📄</span>
-                    <span>${f.category || f.name}</span>
-                    <button onclick="removeFile(${i})" class="text-gray-500 hover:text-white">×</button>
-                </div>
-            `).join('');
+            $uploadedFiles.innerHTML = state.uploadedFiles.map((f, i) => {
+                const style = categoryStyles[f.category] || { label: f.category_cn || f.category || '文件', color: '#6B7280', icon: '📄' };
+                return `
+                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm" style="background: ${style.color}20; border: 1px solid ${style.color}50">
+                        <span>${style.icon}</span>
+                        <span style="color: ${style.color}">${style.label}</span>
+                        <button onclick="removeFile(${i})" class="text-gray-400 hover:text-white ml-1">×</button>
+                    </div>
+                `;
+            }).join('');
         }
         
         window.removeFile = function(index) {

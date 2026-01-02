@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // 快捷提问按钮
+    // 快捷提问按钮（帮助等）
     elements.quickPrompts.forEach(btn => {
         btn.addEventListener('click', () => {
             const text = btn.textContent.trim();
@@ -97,6 +97,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+    
+    // 上传文件按钮 - 直接触发文件选择器（绕过浏览器安全限制）
+    const uploadBtn = document.getElementById('btn-upload');
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', () => {
+            if (elements.fileInput) {
+                elements.fileInput.click();
+            }
+        });
+    }
+    
+    // 开始审计按钮 - 直接调用审计函数
+    const startAuditBtn = document.getElementById('btn-start-audit');
+    if (startAuditBtn) {
+        startAuditBtn.addEventListener('click', () => {
+            startAuditPipeline();
+        });
+    }
     
     // 联系开发者弹窗
     if (elements.contactBtn) {

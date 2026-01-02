@@ -711,10 +711,10 @@
                     
                     <!-- 文件分类卡片（2x2 网格，适合聊天窗口宽度）-->
                     <div class="grid grid-cols-2 gap-3">
-                        ${renderFileCard('科目余额表', classifiedFiles.balance, 'required', '#3B82F6')}
-                        ${renderFileCard('序时账', classifiedFiles.journal, 'optional', '#10B981')}
-                        ${renderFileCard('财务报表', classifiedFiles.statement.length > 0 ? classifiedFiles.statement.join('、') : null, 'optional', '#8B5CF6')}
-                        ${renderFileCard('上年审计报告', classifiedFiles.prior_report, 'optional', '#F59E0B')}
+                        ${renderFileCard('科目余额表', classifiedFiles.balance ? [classifiedFiles.balance] : null, 'required', '#3B82F6')}
+                        ${renderFileCard('序时账', classifiedFiles.journal ? [classifiedFiles.journal] : null, 'optional', '#10B981')}
+                        ${renderFileCard('财务报表', classifiedFiles.statement.length > 0 ? classifiedFiles.statement : null, 'optional', '#8B5CF6')}
+                        ${renderFileCard('上年审计报告', classifiedFiles.prior_report ? [classifiedFiles.prior_report] : null, 'optional', '#F59E0B')}
                     </div>
                     
                     <!-- 启动按钮（与Web一致：公司名称由后端在处理时识别）-->
@@ -733,9 +733,10 @@
         }
         
         // 渲染单个文件卡片（放大版，更清晰）
-        function renderFileCard(category, fileName, type, color) {
+        // fileName 现在是数组格式，支持多个文件
+        function renderFileCard(category, fileNames, type, color) {
             const isRequired = type === 'required';
-            const hasFile = fileName !== null;
+            const hasFile = fileNames !== null && fileNames.length > 0;
             
             // 图标映射
             const icons = {
@@ -747,6 +748,11 @@
             const icon = icons[category] || '📄';
             
             if (hasFile) {
+                // 每个文件单独一行显示
+                const fileListHtml = fileNames.map((name, idx) => 
+                    `<div class="text-sm text-gray-200 font-medium truncate" title="${name}">✓ ${idx + 1}、${name}</div>`
+                ).join('');
+                
                 return `
                     <div class="rounded-xl p-4 border-2" style="border-color: ${color}60; background: ${color}15">
                         <div class="flex items-center gap-2 mb-2">
@@ -754,7 +760,7 @@
                             <span class="text-sm font-semibold" style="color: ${color}">${category}</span>
                             ${isRequired ? '<span class="text-xs bg-red-500/30 text-red-300 px-2 py-0.5 rounded-full font-medium">必填</span>' : '<span class="text-xs text-gray-400">可选</span>'}
                         </div>
-                        <div class="text-sm text-gray-200 truncate font-medium" title="${fileName}">✓ ${fileName}</div>
+                        <div class="space-y-1">${fileListHtml}</div>
                     </div>
                 `;
             } else {

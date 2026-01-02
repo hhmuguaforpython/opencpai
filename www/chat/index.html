@@ -707,8 +707,8 @@
                         <span class="text-xs text-gray-400">共 ${state.uploadedFiles.length} 个</span>
                     </div>
                     
-                    <!-- 文件分类卡片 -->
-                    <div class="grid grid-cols-2 gap-2">
+                    <!-- 文件分类卡片（2x2网格，间距加大）-->
+                    <div class="grid grid-cols-2 gap-3">
                         ${renderFileCard('科目余额表', classifiedFiles.balance, 'required', '#3B82F6')}
                         ${renderFileCard('序时账', classifiedFiles.journal, 'optional', '#10B981')}
                         ${renderFileCard('财务报表', classifiedFiles.statement.length > 0 ? classifiedFiles.statement.join('、') : null, 'optional', '#8B5CF6')}
@@ -730,29 +730,40 @@
             detectCompanyInfoFast();
         }
         
-        // 渲染单个文件卡片
+        // 渲染单个文件卡片（放大版，更清晰）
         function renderFileCard(category, fileName, type, color) {
             const isRequired = type === 'required';
             const hasFile = fileName !== null;
             
+            // 图标映射
+            const icons = {
+                '科目余额表': '📊',
+                '序时账': '📝',
+                '财务报表': '📈',
+                '上年审计报告': '📋'
+            };
+            const icon = icons[category] || '📄';
+            
             if (hasFile) {
                 return `
-                    <div class="rounded-lg p-3 border" style="border-color: ${color}40; background: ${color}10">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="text-xs font-medium" style="color: ${color}">${category}</span>
-                            ${isRequired ? '<span class="text-xs bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">必填</span>' : '<span class="text-xs text-gray-500">可选</span>'}
+                    <div class="rounded-xl p-4 border-2" style="border-color: ${color}60; background: ${color}15">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-lg">${icon}</span>
+                            <span class="text-sm font-semibold" style="color: ${color}">${category}</span>
+                            ${isRequired ? '<span class="text-xs bg-red-500/30 text-red-300 px-2 py-0.5 rounded-full font-medium">必填</span>' : '<span class="text-xs text-gray-400">可选</span>'}
                         </div>
-                        <div class="text-xs text-gray-300 truncate" title="${fileName}">${fileName}</div>
+                        <div class="text-sm text-gray-200 truncate font-medium" title="${fileName}">✓ ${fileName}</div>
                     </div>
                 `;
             } else {
                 return `
-                    <div class="rounded-lg p-3 border border-dashed border-gray-600 bg-white/5">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="text-xs text-gray-500">${category}</span>
-                            ${isRequired ? '<span class="text-xs bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">必填</span>' : '<span class="text-xs text-gray-500">可选</span>'}
+                    <div class="rounded-xl p-4 border-2 border-dashed border-gray-500 bg-white/5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-lg opacity-40">${icon}</span>
+                            <span class="text-sm text-gray-400">${category}</span>
+                            ${isRequired ? '<span class="text-xs bg-red-500/30 text-red-300 px-2 py-0.5 rounded-full font-medium">必填</span>' : '<span class="text-xs text-gray-500">可选</span>'}
                         </div>
-                        <div class="text-xs text-gray-500">未上传</div>
+                        <div class="text-sm text-gray-500">未上传</div>
                     </div>
                 `;
             }

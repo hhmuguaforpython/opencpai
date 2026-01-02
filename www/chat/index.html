@@ -709,8 +709,8 @@
                         <span class="text-xs text-gray-400">共 ${state.uploadedFiles.length} 个</span>
                     </div>
                     
-                    <!-- 文件分类卡片（一行四列，参考Web样式）-->
-                    <div class="grid grid-cols-4 gap-3">
+                    <!-- 文件分类卡片（2x2 网格，适合聊天窗口宽度）-->
+                    <div class="grid grid-cols-2 gap-3">
                         ${renderFileCard('科目余额表', classifiedFiles.balance, 'required', '#3B82F6')}
                         ${renderFileCard('序时账', classifiedFiles.journal, 'optional', '#10B981')}
                         ${renderFileCard('财务报表', classifiedFiles.statement.length > 0 ? classifiedFiles.statement.join('、') : null, 'optional', '#8B5CF6')}

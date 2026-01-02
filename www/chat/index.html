@@ -317,6 +317,39 @@
         console.log('🔧 Backend URL:', CONFIG.backendUrl);
         
         // =====================================================
+        // 用户设置（存储在 localStorage，未来可从登录账户获取）
+        // =====================================================
+        const DEFAULT_USER_SETTINGS = {
+            firmName: '深圳联兴会计师事务所（普通合伙）',
+            reportType: '标准无保留意见',
+            defaultAuditDate: '2024/12/31',
+            userName: '审计师',
+        };
+        
+        function getUserSettings() {
+            try {
+                const saved = localStorage.getItem('opencpai_user_settings');
+                if (saved) {
+                    return { ...DEFAULT_USER_SETTINGS, ...JSON.parse(saved) };
+                }
+            } catch (e) {
+                console.warn('读取用户设置失败:', e);
+            }
+            return DEFAULT_USER_SETTINGS;
+        }
+        
+        function saveUserSettings(settings) {
+            try {
+                localStorage.setItem('opencpai_user_settings', JSON.stringify(settings));
+            } catch (e) {
+                console.warn('保存用户设置失败:', e);
+            }
+        }
+        
+        const userSettings = getUserSettings();
+        console.log('👤 用户设置:', userSettings);
+        
+        // =====================================================
         // 状态
         // =====================================================
         const state = {
@@ -914,27 +947,69 @@
             
             showChatMode();
             
-            // 不在聊天区显示上传进度，直接更新底部标签栏
-            // 用户消息：简单提示
-            addMessage(`📤 上传 ${files.length} 个文件...`, 'user');
+            // 显示上传进度条
+            const totalSizeMB = Array.from(files).reduce((sum, f) => sum + f.size, 0) / 1024 / 1024;
+            const uploadCardHtml = `
+                <div id="upload-progress-card" class="bg-white/5 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">📤</span>
+                            <span class="font-medium">正在上传</span>
+                            <span class="text-accent-purple font-semibold">${files.length}</span>
+                            <span class="text-gray-400">个文件</span>
+                        </div>
+                        <span id="upload-percent" class="text-sm text-gray-400">0%</span>
+                    </div>
+                    <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div id="upload-bar" class="h-full bg-gradient-to-r from-accent-purple to-accent-blue rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between mt-2 text-xs text-gray-500">
+                        <span>${totalSizeMB.toFixed(1)} MB</span>
+                        <span id="upload-status">上传中...</span>
+                    </div>
+                </div>
+            `;
+            addMessageHTML(uploadCardHtml, 'assistant');
+            scrollToBottom();
             
             try {
-                // 一次性上传所有文件
+                // 一次性上传所有文件（使用XHR以追踪进度）
                 const formData = new FormData();
                 for (let i = 0; i < files.length; i++) {
                     formData.append('files', files[i]);
                 }
                 
-                const response = await fetch(`${CONFIG.backendUrl}/api/upload-and-unpack`, {
-                    method: 'POST',
-                    body: formData
+                const result = await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const percent = Math.round((e.loaded / e.total) * 100);
+                            const $bar = document.getElementById('upload-bar');
+                            const $percent = document.getElementById('upload-percent');
+                            if ($bar) $bar.style.width = `${percent}%`;
+                            if ($percent) $percent.textContent = `${percent}%`;
+                        }
+                    };
+                    
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            const $bar = document.getElementById('upload-bar');
+                            const $percent = document.getElementById('upload-percent');
+                            const $status = document.getElementById('upload-status');
+                            if ($bar) $bar.style.width = '100%';
+                            if ($percent) { $percent.textContent = '✓ 完成'; $percent.className = 'text-sm text-green-400 font-medium'; }
+                            if ($status) $status.textContent = '上传成功';
+                            try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(new Error('解析响应失败')); }
+                        } else {
+                            reject(new Error(`HTTP ${xhr.status}`));
+                        }
+                    };
+                    
+                    xhr.onerror = () => reject(new Error('网络错误'));
+                    xhr.open('POST', `${CONFIG.backendUrl}/api/upload-and-unpack`);
+                    xhr.send(formData);
                 });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
-                const result = await response.json();
                 
                 // 保存 task_id
                 if (result.task_id) {
@@ -1033,10 +1108,28 @@
                                    placeholder="识别中..."
                                    class="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple transition-all">
                         </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-sm text-gray-400 mb-1.5 block">审计截止日</label>
+                                <input type="text" id="confirm-audit-date" value="${userSettings.defaultAuditDate}" 
+                                       placeholder="如：2024/12/31"
+                                       class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-accent-purple transition-all">
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400 mb-1.5 block">报告类型</label>
+                                <select id="confirm-report-type" class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-accent-purple transition-all appearance-none cursor-pointer">
+                                    <option value="标准无保留意见" ${userSettings.reportType === '标准无保留意见' ? 'selected' : ''}>标准无保留意见</option>
+                                    <option value="带强调事项段无保留意见" ${userSettings.reportType === '带强调事项段无保留意见' ? 'selected' : ''}>带强调事项段</option>
+                                    <option value="保留意见" ${userSettings.reportType === '保留意见' ? 'selected' : ''}>保留意见</option>
+                                    <option value="否定意见" ${userSettings.reportType === '否定意见' ? 'selected' : ''}>否定意见</option>
+                                    <option value="无法表示意见" ${userSettings.reportType === '无法表示意见' ? 'selected' : ''}>无法表示意见</option>
+                                </select>
+                            </div>
+                        </div>
                         <div>
-                            <label class="text-sm text-gray-400 mb-1.5 block">审计截止日</label>
-                            <input type="text" id="confirm-audit-date" value="2024/12/31" 
-                                   placeholder="如：2024/12/31"
+                            <label class="text-sm text-gray-400 mb-1.5 block">会计师事务所</label>
+                            <input type="text" id="confirm-firm-name" value="${userSettings.firmName}" 
+                                   placeholder="事务所全称"
                                    class="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent-purple transition-all">
                         </div>
                     </div>
@@ -1092,6 +1185,8 @@
         window.confirmAndStart = function() {
             const companyName = document.getElementById('confirm-company-name')?.value?.trim() || '';
             const auditDate = document.getElementById('confirm-audit-date')?.value?.trim() || '2024/12/31';
+            const reportType = document.getElementById('confirm-report-type')?.value || '标准无保留意见';
+            const firmName = document.getElementById('confirm-firm-name')?.value?.trim() || userSettings.firmName;
             
             if (!companyName) {
                 alert('请输入公司名称');
@@ -1099,8 +1194,19 @@
                 return;
             }
             
+            // 保存用户设置（下次自动填充）
+            saveUserSettings({
+                ...userSettings,
+                firmName: firmName,
+                reportType: reportType,
+                defaultAuditDate: auditDate,
+            });
+            
             state.companyName = companyName;
             state.auditDate = auditDate;
+            state.reportType = reportType;
+            state.firmName = firmName;
+            
             addMessage(`🚀 启动引擎：${companyName}`, 'user');
             startAuditPipeline();
         };

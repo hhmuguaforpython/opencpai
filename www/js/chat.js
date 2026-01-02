@@ -1,49 +1,32 @@
 /**
- * OpenCPAi 官网聊天功能
- * 版本: 1.0.0
- * 集成: 通义千问 API
+ * OpenCPAi 官网聊天功能 - Jenny 审计助手
+ * 版本: 2.0.0
+ * 功能: 对话式审计底稿生成
  */
 
 // =====================================================
 // 配置
 // =====================================================
 const CHAT_CONFIG = {
-    // API 配置 - 生产环境替换为真实 API
-    apiEndpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-    apiKey: '', // 留空，实际使用时需要配置
-    model: 'qwen-turbo',
-    
-    // 系统提示词
-    systemPrompt: `你是 OpenCPAi 官网助手，一个专业、友好的 AI 助手。
-
-关于 OpenCPAi：
-- OpenCPAi 是一个 AI 驱动的审计底稿自动化工具
-- 专为财税审计专业人士设计
-- 核心功能：上传科目余额表，2分钟生成完整审计底稿
-- 技术特点：全面去VBA、去插件，使用 Python + AI
-- 公司：联信智擎（深圳）科技有限公司
-
-你的职责：
-1. 回答关于 OpenCPAi 产品的问题
-2. 解释审计底稿自动化的价值
-3. 引导用户体验产品
-
-回答规则：
-- 简洁专业，不超过 150 字
-- 使用中文
-- 不要编造不存在的功能
-- 如果不确定，建议用户联系 contact@opencpai.com`,
+    // 后端 API
+    backendUrl: 'https://app.opencpai.com',
     
     // UI 配置
     maxMessages: 50,
     typingDelay: 30,
+    pollInterval: 2000,  // 任务轮询间隔 (ms)
 };
 
 // =====================================================
 // 状态
 // =====================================================
-let chatHistory = [];
-let isTyping = false;
+const chatState = {
+    taskId: null,           // 当前任务 ID
+    uploadedFiles: [],      // 已上传文件
+    isProcessing: false,    // 是否正在处理
+    companyName: '',        // 公司名称
+    auditDate: '',          // 审计截止日
+};
 
 // =====================================================
 // DOM 元素
@@ -59,6 +42,7 @@ const elements = {
     contactModal: null,
     closeContact: null,
     quickPrompts: null,
+    fileInput: null,      // 文件选择器
 };
 
 // =====================================================
@@ -76,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.contactModal = document.getElementById('contact-modal');
     elements.closeContact = document.getElementById('close-contact');
     elements.quickPrompts = document.querySelectorAll('.quick-prompt');
+    
+    // 创建隐藏的文件选择器
+    createFileInput();
     
     // 聊天按钮事件
     if (elements.chatFab) {
@@ -134,8 +121,215 @@ document.addEventListener('DOMContentLoaded', () => {
     // 初始化 Header 滚动效果
     initHeaderScroll();
     
-    console.log('🚀 OpenCPAi Chat initialized');
+    console.log('🚀 OpenCPAi Chat (Jenny v2.0) initialized');
 });
+
+// =====================================================
+// 文件上传功能
+// =====================================================
+function createFileInput() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls,.csv';
+    input.multiple = true;
+    input.style.display = 'none';
+    input.addEventListener('change', handleFileSelect);
+    document.body.appendChild(input);
+    elements.fileInput = input;
+}
+
+async function handleFileSelect(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    addMessage(`📁 正在上传 ${files.length} 个文件...`, 'assistant');
+    
+    for (const file of files) {
+        try {
+            const result = await uploadFile(file);
+            
+            // 保存 task_id（后端返回的）
+            if (result.task_id) {
+                chatState.taskId = result.task_id;
+            }
+            
+            // 保存文件信息
+            if (result.files && result.files.length > 0) {
+                // 多文件模式
+                result.files.forEach(f => {
+                    chatState.uploadedFiles.push({
+                        name: f.filename,
+                        category: f.category,
+                        path: f.path,
+                    });
+                });
+                addMessage(`✅ 已上传并识别: ${result.files.map(f => f.category_cn || f.filename).join(', ')}`, 'assistant');
+            } else {
+                // 单文件模式
+                chatState.uploadedFiles.push({
+                    name: file.name,
+                    path: result.upload_path,
+                });
+                addMessage(`✅ 已上传: ${file.name}`, 'assistant');
+            }
+        } catch (error) {
+            addMessage(`❌ 上传失败: ${file.name} - ${error.message}`, 'assistant');
+        }
+    }
+    
+    // 重置 file input
+    event.target.value = '';
+    
+    // 提示下一步
+    if (chatState.uploadedFiles.length > 0) {
+        const taskInfo = chatState.taskId ? `\n📌 任务ID: ${chatState.taskId}` : '';
+        addMessage(`\n📋 已上传 ${chatState.uploadedFiles.length} 个文件。${taskInfo}\n\n输入公司名称和审计截止日，例如：\n「联信智擎 2024-12-31」\n\n然后说「开始审计」即可生成底稿。`, 'assistant');
+    }
+}
+
+async function uploadFile(file) {
+    const formData = new FormData();
+    // 后端期望的字段名是 'file' 用于 upload-and-unpack
+    formData.append('file', file);
+    
+    const response = await fetch(`${CHAT_CONFIG.backendUrl}/api/upload-and-unpack`, {
+        method: 'POST',
+        body: formData,
+    });
+    
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+    
+    return await response.json();
+}
+
+// =====================================================
+// 审计任务功能
+// =====================================================
+async function startAuditPipeline() {
+    if (chatState.uploadedFiles.length === 0) {
+        addMessage('❌ 请先上传文件！输入「上传」开始。', 'assistant');
+        return;
+    }
+    
+    if (!chatState.taskId) {
+        addMessage('❌ 未找到任务ID，请重新上传文件。', 'assistant');
+        return;
+    }
+    
+    if (!chatState.companyName) {
+        addMessage('❌ 请提供公司名称。例如输入：「联信智擎」', 'assistant');
+        return;
+    }
+    
+    chatState.isProcessing = true;
+    addMessage(`🚀 正在启动审计任务 (${chatState.taskId})...`, 'assistant');
+    
+    try {
+        const response = await fetch(`${CHAT_CONFIG.backendUrl}/api/run-full-pipeline`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                source: 'upload',
+                task_id: chatState.taskId,
+                company_name: chatState.companyName,
+                audit_end_date: chatState.auditDate || '2024/12/31',
+            }),
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        // task_id 保持不变（使用上传时的）
+        
+        addMessage(`⏳ 任务已启动\n正在生成审计底稿，请稍候...`, 'assistant');
+        
+        // 开始轮询任务状态
+        pollTaskStatus();
+        
+    } catch (error) {
+        addMessage(`❌ 启动任务失败: ${error.message}`, 'assistant');
+        chatState.isProcessing = false;
+    }
+}
+
+async function pollTaskStatus() {
+    if (!chatState.taskId) return;
+    
+    try {
+        const response = await fetch(`${CHAT_CONFIG.backendUrl}/api/status/${chatState.taskId}`);
+        const data = await response.json();
+        
+        if (data.status === 'completed') {
+            chatState.isProcessing = false;
+            showCompletedResult(data);
+        } else if (data.status === 'failed') {
+            chatState.isProcessing = false;
+            addMessage(`❌ 任务失败: ${data.error || '未知错误'}`, 'assistant');
+        } else {
+            // 继续轮询
+            addMessage(`⏳ 进度: ${data.progress || 0}% - ${data.current_step || '处理中'}`, 'assistant');
+            setTimeout(pollTaskStatus, CHAT_CONFIG.pollInterval);
+        }
+    } catch (error) {
+        console.error('Poll error:', error);
+        setTimeout(pollTaskStatus, CHAT_CONFIG.pollInterval);
+    }
+}
+
+function showCompletedResult(data) {
+    let message = `🎉 审计底稿生成完成！\n\n`;
+    
+    // 后端返回的是 output_files 数组
+    const outputs = data.output_files || data.outputs || [];
+    
+    if (outputs.length > 0) {
+        message += `📥 生成文件：\n`;
+        outputs.forEach(file => {
+            message += `• ${file.name || file}\n`;
+        });
+    }
+    
+    addMessage(message, 'assistant');
+    addDownloadButtons(outputs);
+    
+    // 重置状态
+    chatState.uploadedFiles = [];
+    chatState.taskId = null;
+}
+
+function addDownloadButtons(outputs) {
+    if (!outputs || outputs.length === 0 || !elements.messagesContainer) return;
+    
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'flex flex-wrap gap-2 mt-2 ml-11';
+    
+    // 定义可下载的文件类型
+    const downloadTypes = [
+        { key: 'workpaper', label: '📊 审计底稿', icon: '📊' },
+        { key: 'audit_report_pdf', label: '📄 审计报告PDF', icon: '📄' },
+        { key: 'check_report_pdf', label: '📋 检查报告PDF', icon: '📋' },
+        { key: 'balance_cleaned', label: '📑 清洗余额表', icon: '📑' },
+    ];
+    
+    downloadTypes.forEach(type => {
+        const downloadUrl = `${CHAT_CONFIG.backendUrl}/api/download-pipeline-file/${chatState.taskId}/${type.key}`;
+        
+        const btn = document.createElement('a');
+        btn.href = downloadUrl;
+        btn.target = '_blank';
+        btn.className = 'px-3 py-1 bg-accent-blue/20 hover:bg-accent-blue/40 rounded-lg text-xs text-accent-blue transition-colors';
+        btn.textContent = type.label;
+        buttonContainer.appendChild(btn);
+    });
+    
+    elements.messagesContainer.appendChild(buttonContainer);
+    scrollToBottom();
+}
 
 // =====================================================
 // 聊天面板控制
@@ -188,8 +382,10 @@ function closeContactModal() {
 }
 
 // =====================================================
-// 发送消息
+// 发送消息 - Jenny 核心逻辑
 // =====================================================
+let isTyping = false;
+
 async function handleSend() {
     const message = elements.input?.value.trim();
     if (!message || isTyping) return;
@@ -200,78 +396,138 @@ async function handleSend() {
     // 添加用户消息
     addMessage(message, 'user');
     
-    // 显示打字指示器
+    // 处理用户意图
+    await processUserIntent(message);
+}
+
+async function processUserIntent(message) {
+    const msg = message.toLowerCase();
+    
+    // 1. 上传文件意图
+    if (msg.includes('上传') || msg.includes('文件') || msg.includes('导入')) {
+        addMessage('📤 请选择要上传的文件（支持 Excel 格式）', 'assistant');
+        elements.fileInput?.click();
+        return;
+    }
+    
+    // 2. 开始审计意图
+    if (msg.includes('开始') && (msg.includes('审计') || msg.includes('生成'))) {
+        await startAuditPipeline();
+        return;
+    }
+    
+    // 3. 查看任务状态
+    if (msg.includes('状态') || msg.includes('进度')) {
+        if (chatState.taskId) {
+            addMessage(`📊 任务 ${chatState.taskId.substring(0, 8)}... 正在处理中`, 'assistant');
+        } else {
+            addMessage('📋 当前没有进行中的任务', 'assistant');
+        }
+        return;
+    }
+    
+    // 4. 提取公司名称和日期
+    const companyMatch = extractCompanyInfo(message);
+    if (companyMatch) {
+        chatState.companyName = companyMatch.company;
+        chatState.auditDate = companyMatch.date;
+        addMessage(`✅ 已设置：\n• 公司: ${chatState.companyName}\n• 审计截止日: ${chatState.auditDate}\n\n说「开始审计」即可生成底稿。`, 'assistant');
+        return;
+    }
+    
+    // 5. 帮助
+    if (msg.includes('帮助') || msg.includes('help') || msg === '?') {
+        showHelp();
+        return;
+    }
+    
+    // 6. 其他 - 使用本地问答
     showTypingIndicator();
     isTyping = true;
     
     try {
-        // 调用 API 或使用本地回复
-        const response = await getAIResponse(message);
-        
-        // 隐藏打字指示器
+        const response = getLocalResponse(message);
         hideTypingIndicator();
-        
-        // 添加 AI 回复
         await typeMessage(response, 'assistant');
     } catch (error) {
-        console.error('Chat error:', error);
         hideTypingIndicator();
-        addMessage('抱歉，我暂时无法回复。请稍后再试或联系 contact@opencpai.com', 'assistant');
+        addMessage('抱歉，我暂时无法回复。请稍后再试。', 'assistant');
     }
     
     isTyping = false;
 }
 
-// =====================================================
-// 获取 AI 回复
-// =====================================================
-async function getAIResponse(message) {
-    // 如果没有配置 API Key，使用本地回复
-    if (!CHAT_CONFIG.apiKey) {
-        return getLocalResponse(message);
-    }
+function extractCompanyInfo(message) {
+    // 尝试提取 "公司名 日期" 格式
+    // 例如: "联信智擎 2024-12-31" 或 "联信智擎 2024年12月31日"
     
-    // 构建消息历史
-    const messages = [
-        { role: 'system', content: CHAT_CONFIG.systemPrompt },
-        ...chatHistory.slice(-10), // 只保留最近10条
-        { role: 'user', content: message }
+    const datePatterns = [
+        /(\d{4}[-\/]\d{1,2}[-\/]\d{1,2})/,
+        /(\d{4}年\d{1,2}月\d{1,2}日?)/,
     ];
     
-    // 调用 API
-    const response = await fetch(CHAT_CONFIG.apiEndpoint, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${CHAT_CONFIG.apiKey}`
-        },
-        body: JSON.stringify({
-            model: CHAT_CONFIG.model,
-            messages: messages,
-            temperature: 0.7,
-            max_tokens: 500
-        })
-    });
+    let date = null;
+    let company = message;
     
-    if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+    for (const pattern of datePatterns) {
+        const match = message.match(pattern);
+        if (match) {
+            date = match[1].replace(/[年月]/g, '-').replace(/日/g, '');
+            company = message.replace(match[0], '').trim();
+            break;
+        }
     }
     
-    const data = await response.json();
-    const reply = data.choices[0].message.content;
+    // 如果只有公司名（超过2个字）
+    if (!date && company.length >= 2 && !company.includes('？') && !company.includes('?')) {
+        // 检查是否可能是公司名
+        const keywords = ['公司', '有限', '集团', '科技', '智擎', '控股'];
+        if (keywords.some(k => company.includes(k)) || company.length >= 4) {
+            return {
+                company: company,
+                date: new Date().toISOString().split('T')[0],
+            };
+        }
+    }
     
-    // 更新历史
-    chatHistory.push({ role: 'user', content: message });
-    chatHistory.push({ role: 'assistant', content: reply });
+    if (company && date) {
+        return { company, date };
+    }
     
-    return reply;
+    return null;
+}
+
+function showHelp() {
+    const helpText = `📖 Jenny 使用指南
+
+1️⃣ 上传文件
+   输入「上传」选择科目余额表
+
+2️⃣ 设置公司信息
+   输入「公司名 日期」
+   例如: 联信智擎 2024-12-31
+
+3️⃣ 开始审计
+   输入「开始审计」
+
+4️⃣ 下载结果
+   任务完成后自动显示下载链接
+
+💡 提示: 可以直接提问产品相关问题`;
+    
+    addMessage(helpText, 'assistant');
 }
 
 // =====================================================
-// 本地回复（无 API 时使用）
+// 本地问答 - Jenny 知识库
 // =====================================================
 function getLocalResponse(message) {
     const msg = message.toLowerCase();
+    
+    // Jenny 自我介绍
+    if (msg.includes('你是谁') || msg.includes('jenny') || msg.includes('介绍')) {
+        return '你好！我是 Jenny，OpenCPAi 的审计助手 🌟\n\n我可以帮你：\n• 上传科目余额表\n• 自动生成审计底稿\n• 回答产品问题\n\n输入「上传」开始吧！';
+    }
     
     // 关键词匹配
     if (msg.includes('什么') && (msg.includes('opencpai') || msg.includes('是'))) {
@@ -279,7 +535,7 @@ function getLocalResponse(message) {
     }
     
     if (msg.includes('怎么') && (msg.includes('用') || msg.includes('使用') || msg.includes('体验'))) {
-        return '使用非常简单！点击页面上的「立即体验」按钮，上传您的科目余额表（Excel格式），系统会自动识别并生成审计底稿。整个过程只需2分钟左右。';
+        return '使用非常简单！\n\n1️⃣ 输入「上传」选择文件\n2️⃣ 输入公司名和日期\n3️⃣ 说「开始审计」\n\n整个过程只需2分钟左右。';
     }
     
     if (msg.includes('价格') || msg.includes('收费') || msg.includes('多少钱') || msg.includes('免费')) {
@@ -287,27 +543,27 @@ function getLocalResponse(message) {
     }
     
     if (msg.includes('安全') || msg.includes('数据') || msg.includes('隐私')) {
-        return '数据安全是我们的首要考量。您上传的财务数据仅用于生成底稿，不会被存储或用于其他目的。我们也支持本地部署方案，满足对数据安全有更高要求的客户。';
+        return '数据安全是我们的首要考量。您上传的财务数据仅用于生成底稿，不会被存储或用于其他目的。我们也支持本地部署方案。';
     }
     
     if (msg.includes('支持') && (msg.includes('软件') || msg.includes('格式'))) {
-        return '目前支持 20+ 种主流财务软件导出的科目余额表格式，包括用友、金蝶、浪潮等。如果您的格式无法识别，请联系我们，我们会尽快适配。';
+        return '目前支持 20+ 种主流财务软件导出的科目余额表格式，包括用友、金蝶、浪潮等。如果您的格式无法识别，请联系我们。';
     }
     
     if (msg.includes('联系') || msg.includes('客服') || msg.includes('咨询')) {
-        return '您可以通过以下方式联系我们：\n📧 邮箱：contact@opencpai.com\n💬 也可以添加页面底部的微信二维码\n我们会在24小时内回复您。';
+        return '您可以通过以下方式联系我们：\n📧 邮箱：contact@opencpai.com\n💬 也可以添加页面底部的微信二维码';
     }
     
-    if (msg.includes('你好') || msg.includes('hi') || msg.includes('hello')) {
-        return '你好！我是 OpenCPAi 助手。有关于审计底稿自动化的问题，随时可以问我！';
+    if (msg.includes('你好') || msg.includes('hi') || msg.includes('hello') || msg.includes('嗨')) {
+        return '你好！我是 Jenny，OpenCPAi 审计助手 👋\n\n输入「帮助」查看使用指南，或直接输入「上传」开始体验！';
     }
     
     // 默认回复
-    return '感谢您的提问！关于这个问题，建议您点击「立即体验」亲自试用，或联系 contact@opencpai.com 获取更详细的解答。';
+    return '我可以帮你生成审计底稿 📊\n\n• 输入「上传」上传文件\n• 输入「帮助」查看指南\n• 或者直接问我产品问题';
 }
 
 // =====================================================
-// UI 辅助函数
+// UI 辅助函数 - Jenny 样式
 // =====================================================
 function addMessage(content, role) {
     if (!elements.messagesContainer) return;
@@ -327,8 +583,8 @@ function addMessage(content, role) {
         `;
     } else {
         messageDiv.innerHTML = `
-            <div class="w-8 h-8 rounded-lg bg-accent-purple/20 flex items-center justify-center flex-shrink-0">
-                <span class="text-sm">🤖</span>
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center flex-shrink-0">
+                <span class="text-sm">✨</span>
             </div>
             <div class="bg-bg-card rounded-xl rounded-tl-none p-4 max-w-[260px]">
                 <p class="text-sm text-gray-300">${escapeHtml(content).replace(/\n/g, '<br>')}</p>
@@ -347,8 +603,8 @@ async function typeMessage(content, role) {
     messageDiv.className = 'flex gap-3 chat-message';
     
     messageDiv.innerHTML = `
-        <div class="w-8 h-8 rounded-lg bg-accent-purple/20 flex items-center justify-center flex-shrink-0">
-            <span class="text-sm">🤖</span>
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center flex-shrink-0">
+            <span class="text-sm">✨</span>
         </div>
         <div class="bg-bg-card rounded-xl rounded-tl-none p-4 max-w-[260px]">
             <p class="text-sm text-gray-300" id="typing-content"></p>
@@ -377,8 +633,8 @@ function showTypingIndicator() {
     indicator.id = 'typing-indicator';
     indicator.className = 'flex gap-3 chat-message';
     indicator.innerHTML = `
-        <div class="w-8 h-8 rounded-lg bg-accent-purple/20 flex items-center justify-center flex-shrink-0">
-            <span class="text-sm">🤖</span>
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center flex-shrink-0">
+            <span class="text-sm">✨</span>
         </div>
         <div class="bg-bg-card rounded-xl rounded-tl-none p-3">
             <div class="typing-indicator">

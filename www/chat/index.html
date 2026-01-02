@@ -250,7 +250,7 @@
     </main>
     
     <!-- Hidden File Input -->
-    <input type="file" id="file-input" class="hidden" accept=".xlsx,.xls,.csv,.zip,.rar" multiple>
+    <input type="file" id="file-input" class="hidden" accept=".xlsx,.xls,.csv,.zip,.rar,.pdf" multiple>
     
     <!-- JavaScript -->
     <script>
@@ -675,19 +675,25 @@
                 </div>
                 <div class="flex-1 max-w-2xl bg-white/5 rounded-2xl rounded-tl-sm p-4">
                     <!-- 标题和计时器 -->
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
                             <span class="text-base font-medium">🚀 OpenCPAi 引擎正在为「${state.companyName}」生成底稿</span>
                         </div>
-                        <div class="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-lg">
+                        <div class="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-lg">
                             <div id="timer-dot" class="w-2 h-2 bg-green-500 rounded-full timer-pulse"></div>
-                            <span id="timer-display" class="font-mono text-sm">00:00</span>
+                            <span id="timer-display" class="font-mono text-sm text-green-400">0 秒</span>
                         </div>
                     </div>
                     
-                    <!-- 进度条 -->
-                    <div class="w-full bg-gray-700 rounded-full h-2 mb-4">
-                        <div id="progress-bar" class="progress-bar h-2 rounded-full" style="width: 5%"></div>
+                    <!-- 进度条和百分比 -->
+                    <div class="mb-4">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span id="progress-percent" class="text-blue-400 font-medium">5%</span>
+                            <span id="progress-eta" class="text-gray-400">预计约 2 分钟</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2.5">
+                            <div id="progress-bar" class="progress-bar h-2.5 rounded-full" style="width: 5%"></div>
+                        </div>
                     </div>
                     
                     <!-- 步骤列表 -->
@@ -744,11 +750,39 @@
         function startTimer() {
             state.timerInterval = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
-                const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
-                const secs = (elapsed % 60).toString().padStart(2, '0');
                 const display = document.getElementById('timer-display');
-                if (display) display.textContent = `${mins}:${secs}`;
+                
+                if (elapsed < 60) {
+                    // 显示秒数
+                    if (display) display.textContent = `${elapsed} 秒`;
+                } else {
+                    // 显示分秒
+                    const mins = Math.floor(elapsed / 60);
+                    const secs = elapsed % 60;
+                    if (display) display.textContent = `${mins} 分 ${secs} 秒`;
+                }
+                
+                // 更新预估剩余时间
+                updateETA(elapsed);
             }, 1000);
+        }
+        
+        // 更新预估剩余时间
+        function updateETA(elapsed) {
+            const eta = document.getElementById('progress-eta');
+            if (!eta) return;
+            
+            const totalEstimate = 120; // 预估总时镴2分钟
+            const remaining = Math.max(0, totalEstimate - elapsed);
+            
+            if (remaining > 60) {
+                const mins = Math.ceil(remaining / 60);
+                eta.textContent = `预计剩余 ${mins} 分钟`;
+            } else if (remaining > 0) {
+                eta.textContent = `预计剩余 ${remaining} 秒`;
+            } else {
+                eta.textContent = `即将完成...`;
+            }
         }
         
         function stopTimer() {
@@ -763,6 +797,10 @@
             // 更新进度条
             const bar = document.getElementById('progress-bar');
             if (bar) bar.style.width = `${progress}%`;
+            
+            // 更新百分比显示
+            const percent = document.getElementById('progress-percent');
+            if (percent) percent.textContent = `${progress}%`;
             
             // 更新步骤
             const stepMapping = { 'upload': 1, 'clean': 2, 'km': 3, 'allocate': 4, 'complete': 5 };

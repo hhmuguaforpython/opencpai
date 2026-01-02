@@ -107,6 +107,26 @@
         .step-done { color: #10B981; }
         .step-running { color: #3B82F6; animation: pulse 1s infinite; }
         
+        /* 下拉框样式（黑色背景下可见） */
+        select.dark-select {
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        select.dark-select option {
+            background-color: #1a1a1a;
+            color: #fff;
+            padding: 8px;
+        }
+        select.dark-select option:hover {
+            background-color: #333;
+        }
+        
+        /* 模态框样式 */
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+        }
+        
         /* 移动端响应式 */
         @media (max-width: 768px) {
             /* 隐藏侧边栏 */
@@ -154,11 +174,16 @@
                 </div>
                 <span class="font-semibold">OpenCPAi</span>
             </a>
-            <button id="mobile-new-chat" class="p-2 rounded-lg border border-white/10 hover:bg-white/5">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-            </button>
+            <div class="flex items-center gap-2">
+                <button id="mobile-new-chat" class="p-2 rounded-lg border border-white/10 hover:bg-white/5">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                </button>
+                <button id="mobile-settings-btn" onclick="window.openSettingsModal()" class="w-9 h-9 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-white font-medium text-sm hover:opacity-90 transition-opacity">
+                    审
+                </button>
+            </div>
         </div>
     </header>
     
@@ -194,6 +219,19 @@
         
         <!-- User Section -->
         <div class="p-3 border-t border-white/5">
+            <button onclick="window.openSettingsModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-gray-300 text-sm mb-2">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-white font-medium text-sm">
+                    审
+                </div>
+                <div class="flex-1 text-left">
+                    <div class="font-medium">审计师</div>
+                    <div class="text-xs text-gray-500">点击设置</div>
+                </div>
+                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </button>
             <a href="../" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400 text-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
@@ -1096,8 +1134,8 @@
                     <div class="grid grid-cols-4 gap-2">
                         ${renderFileChip('余额表', classifiedFiles.balance, true, '📊')}
                         ${renderFileChip('序时账', classifiedFiles.journal, false, '📝')}
-                        ${renderFileChip('报表', classifiedFiles.statement?.length > 0 ? classifiedFiles.statement : null, false, '📈')}
-                        ${renderFileChip('上年报告', classifiedFiles.prior_report, false, '📋')}
+                        ${renderFileChip('财务报表', classifiedFiles.statement?.length > 0 ? classifiedFiles.statement : null, false, '📈')}
+                        ${renderFileChip('上年审计报告', classifiedFiles.prior_report, false, '📋')}
                     </div>
                     
                     <!-- 公司信息确认 -->
@@ -1117,7 +1155,7 @@
                             </div>
                             <div>
                                 <label class="text-sm text-gray-400 mb-1.5 block">报告类型</label>
-                                <select id="confirm-report-type" class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-accent-purple transition-all appearance-none cursor-pointer">
+                                <select id="confirm-report-type" class="dark-select w-full px-3 py-2 border border-white/20 rounded-lg text-sm focus:outline-none focus:border-accent-purple transition-all cursor-pointer">
                                     <option value="标准无保留意见" ${userSettings.reportType === '标准无保留意见' ? 'selected' : ''}>标准无保留意见</option>
                                     <option value="带强调事项段无保留意见" ${userSettings.reportType === '带强调事项段无保留意见' ? 'selected' : ''}>带强调事项段</option>
                                     <option value="保留意见" ${userSettings.reportType === '保留意见' ? 'selected' : ''}>保留意见</option>
@@ -1920,6 +1958,131 @@
             }
             
             return null;
+        }
+        
+        // ============ 用户设置模态框 ============
+        window.openSettingsModal = function() {
+            const settings = getUserSettings();
+            const modal = document.createElement('div');
+            modal.id = 'settingsModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="bg-zinc-900 rounded-2xl w-full max-w-md mx-4 shadow-2xl border border-white/10 overflow-hidden">
+                    <!-- 头部 -->
+                    <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                                ${settings.userName ? settings.userName.charAt(0) : 'A'}
+                            </div>
+                            <div>
+                                <h3 class="text-white font-semibold">用户设置</h3>
+                                <p class="text-zinc-500 text-xs">个人信息与审计默认配置</p>
+                            </div>
+                        </div>
+                        <button onclick="closeSettingsModal()" class="text-zinc-400 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- 表单内容 -->
+                    <div class="p-6 space-y-5">
+                        <!-- 用户名 -->
+                        <div>
+                            <label class="block text-zinc-400 text-sm mb-2">👤 用户名</label>
+                            <input type="text" id="settings_userName" 
+                                value="${settings.userName || ''}"
+                                placeholder="请输入您的姓名"
+                                class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all">
+                        </div>
+                        
+                        <!-- 会计师事务所 -->
+                        <div>
+                            <label class="block text-zinc-400 text-sm mb-2">🏢 会计师事务所</label>
+                            <input type="text" id="settings_firmName" 
+                                value="${settings.firmName || ''}"
+                                placeholder="请输入事务所全称"
+                                class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all">
+                        </div>
+                        
+                        <!-- 默认报告类型 -->
+                        <div>
+                            <label class="block text-zinc-400 text-sm mb-2">📋 默认审计意见类型</label>
+                            <select id="settings_reportType" class="dark-select w-full">
+                                <option value="标准无保留意见" ${settings.reportType === '标准无保留意见' ? 'selected' : ''}>标准无保留意见</option>
+                                <option value="带强调事项段的无保留意见" ${settings.reportType === '带强调事项段的无保留意见' ? 'selected' : ''}>带强调事项段的无保留意见</option>
+                                <option value="保留意见" ${settings.reportType === '保留意见' ? 'selected' : ''}>保留意见</option>
+                                <option value="否定意见" ${settings.reportType === '否定意见' ? 'selected' : ''}>否定意见</option>
+                                <option value="无法表示意见" ${settings.reportType === '无法表示意见' ? 'selected' : ''}>无法表示意见</option>
+                            </select>
+                        </div>
+                        
+                        <!-- 默认审计截止日 -->
+                        <div>
+                            <label class="block text-zinc-400 text-sm mb-2">📅 默认审计截止日</label>
+                            <input type="text" id="settings_auditDate" 
+                                value="${settings.defaultAuditDate || ''}"
+                                placeholder="如: 2024/12/31"
+                                class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all">
+                        </div>
+                    </div>
+                    
+                    <!-- 底部按钮 -->
+                    <div class="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+                        <button onclick="closeSettingsModal()" 
+                            class="px-5 py-2.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+                            取消
+                        </button>
+                        <button onclick="saveSettingsFromModal()" 
+                            class="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl font-medium transition-all shadow-lg shadow-blue-500/25">
+                            保存设置
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // 点击背景关闭
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeSettingsModal();
+                }
+            });
+        };
+        
+        window.closeSettingsModal = function() {
+            const modal = document.getElementById('settingsModal');
+            if (modal) {
+                modal.remove();
+            }
+        };
+        
+        window.saveSettingsFromModal = function() {
+            const settings = {
+                userName: document.getElementById('settings_userName').value.trim() || DEFAULT_USER_SETTINGS.userName,
+                firmName: document.getElementById('settings_firmName').value.trim() || DEFAULT_USER_SETTINGS.firmName,
+                reportType: document.getElementById('settings_reportType').value,
+                defaultAuditDate: document.getElementById('settings_auditDate').value.trim() || DEFAULT_USER_SETTINGS.defaultAuditDate
+            };
+            saveUserSettings(settings);
+            closeSettingsModal();
+            
+            // 显示保存成功提示
+            showToast('✅ 设置已保存');
+        };
+        
+        // 轻量级 Toast 提示
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-zinc-800 text-white rounded-full shadow-xl border border-white/10 z-50 animate-fade-in';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
         }
     </script>
 </body>

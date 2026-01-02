@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenCPAi - AI审计助手</title>
+    
+    <!-- SEO -->
+    <meta name="description" content="OpenCPAi AI审计助手 - 上传文件，自动生成审计底稿">
+    <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bg-dark': '#0a0a0a',
+                        'bg-sidebar': '#171717',
+                        'bg-chat': '#0a0a0a',
+                        'bg-input': '#1a1a1a',
+                        'accent-blue': '#3B82F6',
+                        'accent-purple': '#8B5CF6',
+                        'accent-green': '#10B981',
+                    },
+                    fontFamily: {
+                        'inter': ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 滚动条样式 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        
+        /* 消息动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message-fade-in { animation: fadeIn 0.3s ease-out; }
+        
+        /* 打字指示器 */
+        @keyframes bounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-4px); }
+        }
+        .typing-dot { animation: bounce 1.4s infinite; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        /* 文件上传区域 */
+        .upload-zone {
+            border: 2px dashed #333;
+            transition: all 0.3s;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: #3B82F6;
+            background: rgba(59, 130, 246, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-bg-dark text-gray-100 font-inter antialiased h-screen flex">
+    
+    <!-- ========== SIDEBAR ========== -->
+    <aside id="sidebar" class="w-64 bg-bg-sidebar border-r border-white/5 flex flex-col h-full">
+        <!-- Logo -->
+        <div class="p-4 border-b border-white/5">
+            <a href="../" class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center">
+                    <span class="text-white font-bold">O</span>
+                </div>
+                <span class="text-lg font-semibold">OpenCPAi</span>
+            </a>
+        </div>
+        
+        <!-- New Chat Button -->
+        <div class="p-3">
+            <button id="new-chat-btn" class="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg border border-white/10 hover:bg-white/5 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                <span class="text-sm">新对话</span>
+            </button>
+        </div>
+        
+        <!-- Chat History -->
+        <div class="flex-1 overflow-y-auto p-3">
+            <div class="text-xs text-gray-500 px-2 mb-2">历史对话</div>
+            <div id="chat-history" class="space-y-1">
+                <!-- 动态填充 -->
+            </div>
+        </div>
+        
+        <!-- User Section -->
+        <div class="p-3 border-t border-white/5">
+            <a href="../" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400 text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                返回官网
+            </a>
+        </div>
+    </aside>
+    
+    <!-- ========== MAIN CHAT AREA ========== -->
+    <main class="flex-1 flex flex-col h-full">
+        
+        <!-- Chat Messages -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto">
+            
+            <!-- Welcome Screen (初始状态) -->
+            <div id="welcome-screen" class="h-full flex flex-col items-center justify-center px-4">
+                <div class="max-w-2xl w-full text-center">
+                    <!-- Logo -->
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center mx-auto mb-6">
+                        <span class="text-3xl">✨</span>
+                    </div>
+                    
+                    <h1 class="text-2xl font-semibold mb-2">你好，我是 Jenny</h1>
+                    <p class="text-gray-400 mb-8">OpenCPAi 审计助手，帮你自动生成审计底稿</p>
+                    
+                    <!-- Quick Actions -->
+                    <div class="grid grid-cols-2 gap-3 max-w-md mx-auto mb-8">
+                        <button id="action-upload" class="upload-zone flex flex-col items-center gap-2 p-4 rounded-xl text-left hover:bg-white/5 transition-all">
+                            <span class="text-2xl">📤</span>
+                            <span class="text-sm font-medium">上传文件</span>
+                            <span class="text-xs text-gray-500">Excel/ZIP</span>
+                        </button>
+                        <button id="action-demo" class="flex flex-col items-center gap-2 p-4 rounded-xl border border-white/10 text-left hover:bg-white/5 transition-all">
+                            <span class="text-2xl">🎯</span>
+                            <span class="text-sm font-medium">演示模式</span>
+                            <span class="text-xs text-gray-500">使用示例数据</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Suggested Prompts -->
+                    <div class="flex flex-wrap justify-center gap-2">
+                        <button class="suggest-prompt px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-sm transition-colors">
+                            帮我生成审计底稿
+                        </button>
+                        <button class="suggest-prompt px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-sm transition-colors">
+                            如何使用？
+                        </button>
+                        <button class="suggest-prompt px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-sm transition-colors">
+                            支持什么格式？
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Messages Container (对话状态) -->
+            <div id="messages-container" class="hidden max-w-3xl mx-auto py-8 px-4 space-y-6">
+                <!-- 消息会动态添加到这里 -->
+            </div>
+            
+        </div>
+        
+        <!-- Input Area -->
+        <div class="border-t border-white/5 p-4">
+            <div class="max-w-3xl mx-auto">
+                <!-- 已上传文件预览 -->
+                <div id="uploaded-files" class="hidden flex flex-wrap gap-2 mb-3">
+                    <!-- 动态填充 -->
+                </div>
+                
+                <!-- Input Box -->
+                <div class="flex items-end gap-3">
+                    <!-- Attach Button -->
+                    <button id="attach-btn" class="p-3 rounded-xl bg-bg-input hover:bg-white/10 transition-colors" title="上传文件">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                        </svg>
+                    </button>
+                    
+                    <!-- Text Input -->
+                    <div class="flex-1 relative">
+                        <textarea id="chat-input" 
+                                  placeholder="输入消息，或上传审计文件..." 
+                                  rows="1"
+                                  class="w-full bg-bg-input border border-white/10 rounded-2xl px-4 py-3 pr-12 text-sm resize-none 
+                                         focus:outline-none focus:border-accent-blue/50 focus:ring-2 focus:ring-accent-blue/20
+                                         placeholder-gray-500 max-h-32 overflow-y-auto"></textarea>
+                        
+                        <!-- Send Button -->
+                        <button id="send-btn" 
+                                class="absolute right-2 bottom-2 p-2 rounded-lg bg-accent-blue hover:bg-accent-blue/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <p class="text-center text-xs text-gray-600 mt-3">
+                    OpenCPAi 可能会产生错误，请核实重要信息
+                </p>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Hidden File Input -->
+    <input type="file" id="file-input" class="hidden" accept=".xlsx,.xls,.csv,.zip,.rar" multiple>
+    
+    <!-- JavaScript -->
+    <script>
+        // =====================================================
+        // 配置
+        // =====================================================
+        const CONFIG = {
+            backendUrl: 'https://app.opencpai.com',
+            pollInterval: 2000,
+        };
+        
+        // =====================================================
+        // 状态
+        // =====================================================
+        const state = {
+            taskId: null,
+            uploadedFiles: [],
+            companyName: '',
+            auditDate: '',
+            isProcessing: false,
+            messages: [],
+        };
+        
+        // =====================================================
+        // DOM 元素
+        // =====================================================
+        const $welcomeScreen = document.getElementById('welcome-screen');
+        const $messagesContainer = document.getElementById('messages-container');
+        const $chatMessages = document.getElementById('chat-messages');
+        const $input = document.getElementById('chat-input');
+        const $sendBtn = document.getElementById('send-btn');
+        const $attachBtn = document.getElementById('attach-btn');
+        const $fileInput = document.getElementById('file-input');
+        const $uploadedFiles = document.getElementById('uploaded-files');
+        const $actionUpload = document.getElementById('action-upload');
+        const $actionDemo = document.getElementById('action-demo');
+        const $newChatBtn = document.getElementById('new-chat-btn');
+        
+        // =====================================================
+        // 初始化
+        // =====================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // 输入框自动调整高度
+            $input.addEventListener('input', () => {
+                $input.style.height = 'auto';
+                $input.style.height = Math.min($input.scrollHeight, 128) + 'px';
+                $sendBtn.disabled = !$input.value.trim();
+            });
+            
+            // 发送消息
+            $sendBtn.addEventListener('click', handleSend);
+            $input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                }
+            });
+            
+            // 文件上传
+            $attachBtn.addEventListener('click', () => $fileInput.click());
+            $actionUpload.addEventListener('click', () => $fileInput.click());
+            $fileInput.addEventListener('change', handleFileSelect);
+            
+            // 演示模式
+            $actionDemo.addEventListener('click', startDemoMode);
+            
+            // 新对话
+            $newChatBtn.addEventListener('click', resetChat);
+            
+            // 建议提问
+            document.querySelectorAll('.suggest-prompt').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    $input.value = btn.textContent;
+                    $sendBtn.disabled = false;
+                    handleSend();
+                });
+            });
+            
+            console.log('🚀 OpenCPAi Chat initialized');
+        });
+        
+        // =====================================================
+        // 核心功能
+        // =====================================================
+        function handleSend() {
+            const message = $input.value.trim();
+            if (!message && state.uploadedFiles.length === 0) return;
+            
+            // 切换到对话模式
+            showChatMode();
+            
+            // 添加用户消息
+            if (message) {
+                addMessage(message, 'user');
+                $input.value = '';
+                $input.style.height = 'auto';
+                $sendBtn.disabled = true;
+            }
+            
+            // 处理意图
+            processIntent(message);
+        }
+        
+        async function processIntent(message) {
+            const msg = message.toLowerCase();
+            
+            // 开始审计
+            if (msg.includes('开始') || msg.includes('生成') || msg.includes('审计')) {
+                if (state.uploadedFiles.length === 0) {
+                    addMessage('请先上传审计文件（科目余额表、序时账等），我需要这些数据来生成底稿。', 'assistant');
+                    return;
+                }
+                await startAuditPipeline();
+                return;
+            }
+            
+            // 帮助
+            if (msg.includes('如何') || msg.includes('帮助') || msg.includes('使用')) {
+                addMessage(`**使用流程：**
+
+1. 📤 **上传文件** - 点击左下角附件按钮，上传科目余额表、序时账等文件
+2. 📝 **确认信息** - 输入公司名称和审计截止日，如「联信智擎 2024-12-31」
+3. 🚀 **生成底稿** - 说「开始审计」，我会自动生成审计底稿
+
+**支持的文件：**
+- 科目余额表 (.xlsx)
+- 序时账/明细账 (.xlsx)
+- 财务报表 (.xlsx)
+- 上期审计报告 (.xlsx)
+- 压缩包 (.zip)`, 'assistant');
+                return;
+            }
+            
+            // 格式
+            if (msg.includes('格式') || msg.includes('支持')) {
+                addMessage('支持 Excel 文件 (.xlsx, .xls) 和压缩包 (.zip, .rar)。建议将所有文件打包成 ZIP 一次性上传。', 'assistant');
+                return;
+            }
+            
+            // 提取公司信息
+            const info = extractCompanyInfo(message);
+            if (info) {
+                state.companyName = info.company;
+                state.auditDate = info.date;
+                addMessage(`已记录：\n• 公司：${info.company}\n• 审计截止日：${info.date}\n\n${state.uploadedFiles.length > 0 ? '说「开始审计」即可生成底稿。' : '请上传审计文件。'}`, 'assistant');
+                return;
+            }
+            
+            // 默认回复
+            addMessage('我是 Jenny，专门帮你生成审计底稿。你可以：\n\n• 上传审计文件（点击附件按钮）\n• 输入「公司名 日期」设置信息\n• 说「开始审计」生成底稿', 'assistant');
+        }
+        
+        // =====================================================
+        // 文件上传
+        // =====================================================
+        async function handleFileSelect(e) {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            
+            showChatMode();
+            addMessage(`正在上传 ${files.length} 个文件...`, 'assistant');
+            
+            for (const file of files) {
+                try {
+                    const result = await uploadFile(file);
+                    
+                    if (result.task_id) {
+                        state.taskId = result.task_id;
+                    }
+                    
+                    if (result.files && result.files.length > 0) {
+                        result.files.forEach(f => {
+                            state.uploadedFiles.push({
+                                name: f.filename,
+                                category: f.category_cn || f.category,
+                            });
+                        });
+                        addMessage(`✅ 已识别：${result.files.map(f => f.category_cn || f.filename).join('、')}`, 'assistant');
+                    } else {
+                        state.uploadedFiles.push({ name: file.name });
+                        addMessage(`✅ 已上传：${file.name}`, 'assistant');
+                    }
+                    
+                    updateUploadedFilesUI();
+                } catch (error) {
+                    addMessage(`❌ 上传失败：${file.name} - ${error.message}`, 'assistant');
+                }
+            }
+            
+            // 提示下一步
+            if (state.uploadedFiles.length > 0) {
+                addMessage(`已上传 ${state.uploadedFiles.length} 个文件。\n\n请输入公司名称和审计截止日（如「联信智擎 2024-12-31」），然后说「开始审计」。`, 'assistant');
+            }
+            
+            $fileInput.value = '';
+        }
+        
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await fetch(`${CONFIG.backendUrl}/api/upload-and-unpack`, {
+                method: 'POST',
+                body: formData,
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            return await response.json();
+        }
+        
+        function updateUploadedFilesUI() {
+            if (state.uploadedFiles.length === 0) {
+                $uploadedFiles.classList.add('hidden');
+                return;
+            }
+            
+            $uploadedFiles.classList.remove('hidden');
+            $uploadedFiles.innerHTML = state.uploadedFiles.map((f, i) => `
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg text-sm">
+                    <span>📄</span>
+                    <span>${f.category || f.name}</span>
+                    <button onclick="removeFile(${i})" class="text-gray-500 hover:text-white">×</button>
+                </div>
+            `).join('');
+        }
+        
+        window.removeFile = function(index) {
+            state.uploadedFiles.splice(index, 1);
+            updateUploadedFilesUI();
+        };
+        
+        // =====================================================
+        // 审计任务
+        // =====================================================
+        async function startAuditPipeline() {
+            if (!state.taskId) {
+                addMessage('请先上传文件。', 'assistant');
+                return;
+            }
+            
+            if (!state.companyName) {
+                addMessage('请提供公司名称，例如输入「联信智擎」', 'assistant');
+                return;
+            }
+            
+            state.isProcessing = true;
+            addMessage(`🚀 正在启动审计任务...\n• 公司：${state.companyName}\n• 截止日：${state.auditDate || '2024/12/31'}`, 'assistant');
+            
+            try {
+                const response = await fetch(`${CONFIG.backendUrl}/api/run-full-pipeline`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source: 'upload',
+                        task_id: state.taskId,
+                        company_name: state.companyName,
+                        audit_end_date: state.auditDate || '2024/12/31',
+                    }),
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    throw new Error(error.detail || `HTTP ${response.status}`);
+                }
+                
+                addMessage('⏳ 任务已提交，正在生成审计底稿...\n这可能需要几分钟，请稍候。', 'assistant');
+                pollTaskStatus();
+                
+            } catch (error) {
+                addMessage(`❌ 启动失败：${error.message}`, 'assistant');
+                state.isProcessing = false;
+            }
+        }
+        
+        async function pollTaskStatus() {
+            if (!state.taskId) return;
+            
+            try {
+                const response = await fetch(`${CONFIG.backendUrl}/api/status/${state.taskId}`);
+                const data = await response.json();
+                
+                if (data.status === 'completed') {
+                    state.isProcessing = false;
+                    showCompletedResult(data);
+                } else if (data.status === 'failed') {
+                    state.isProcessing = false;
+                    addMessage(`❌ 任务失败：${data.error || '未知错误'}`, 'assistant');
+                } else {
+                    // 继续轮询
+                    setTimeout(pollTaskStatus, CONFIG.pollInterval);
+                }
+            } catch (error) {
+                setTimeout(pollTaskStatus, CONFIG.pollInterval);
+            }
+        }
+        
+        function showCompletedResult(data) {
+            const outputs = data.output_files || [];
+            
+            let html = `<div class="space-y-3">
+                <p class="text-lg">🎉 审计底稿生成完成！</p>
+                <div class="grid grid-cols-2 gap-2">`;
+            
+            const downloadTypes = [
+                { key: 'workpaper', label: '📊 审计底稿', color: 'blue' },
+                { key: 'audit_report_pdf', label: '📄 审计报告', color: 'purple' },
+                { key: 'check_report_pdf', label: '📋 检查报告', color: 'green' },
+                { key: 'balance_cleaned', label: '📑 清洗数据', color: 'gray' },
+            ];
+            
+            downloadTypes.forEach(type => {
+                const url = `${CONFIG.backendUrl}/api/download-pipeline-file/${state.taskId}/${type.key}`;
+                html += `<a href="${url}" target="_blank" 
+                           class="flex items-center gap-2 px-4 py-3 rounded-lg bg-${type.color}-500/10 hover:bg-${type.color}-500/20 transition-colors">
+                    <span>${type.label}</span>
+                </a>`;
+            });
+            
+            html += `</div></div>`;
+            
+            addMessageHTML(html, 'assistant');
+        }
+        
+        // =====================================================
+        // 演示模式
+        // =====================================================
+        function startDemoMode() {
+            showChatMode();
+            addMessage('🎯 已进入演示模式，使用示例数据展示功能。', 'assistant');
+            addMessage('（演示功能开发中，敬请期待）', 'assistant');
+        }
+        
+        // =====================================================
+        // UI 辅助
+        // =====================================================
+        function showChatMode() {
+            $welcomeScreen.classList.add('hidden');
+            $messagesContainer.classList.remove('hidden');
+        }
+        
+        function resetChat() {
+            state.taskId = null;
+            state.uploadedFiles = [];
+            state.companyName = '';
+            state.auditDate = '';
+            state.isProcessing = false;
+            state.messages = [];
+            
+            $messagesContainer.innerHTML = '';
+            $uploadedFiles.innerHTML = '';
+            $uploadedFiles.classList.add('hidden');
+            
+            $welcomeScreen.classList.remove('hidden');
+            $messagesContainer.classList.add('hidden');
+        }
+        
+        function addMessage(content, role) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message-fade-in flex gap-3 ${role === 'user' ? 'flex-row-reverse' : ''}`;
+            
+            const avatar = role === 'user' 
+                ? '<div class="w-8 h-8 rounded-full bg-accent-blue flex items-center justify-center text-sm">👤</div>'
+                : '<div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>';
+            
+            const bubbleClass = role === 'user'
+                ? 'bg-accent-blue/20 rounded-2xl rounded-tr-sm'
+                : 'bg-white/5 rounded-2xl rounded-tl-sm';
+            
+            // 简单 Markdown 转换
+            const html = content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+            
+            messageDiv.innerHTML = `
+                ${avatar}
+                <div class="max-w-xl ${bubbleClass} px-4 py-3 text-sm leading-relaxed">
+                    ${html}
+                </div>
+            `;
+            
+            $messagesContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+        
+        function addMessageHTML(html, role) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message-fade-in flex gap-3 ${role === 'user' ? 'flex-row-reverse' : ''}`;
+            
+            messageDiv.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>
+                <div class="max-w-xl bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed">
+                    ${html}
+                </div>
+            `;
+            
+            $messagesContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+        
+        function scrollToBottom() {
+            $chatMessages.scrollTop = $chatMessages.scrollHeight;
+        }
+        
+        function extractCompanyInfo(message) {
+            const datePatterns = [
+                /(\d{4}[-\/]\d{1,2}[-\/]\d{1,2})/,
+                /(\d{4}年\d{1,2}月\d{1,2}日?)/,
+            ];
+            
+            let date = null;
+            let company = message;
+            
+            for (const pattern of datePatterns) {
+                const match = message.match(pattern);
+                if (match) {
+                    date = match[1].replace(/[年月]/g, '-').replace(/日/g, '');
+                    company = message.replace(match[0], '').trim();
+                    break;
+                }
+            }
+            
+            if (!date && company.length >= 2 && !company.includes('？')) {
+                const keywords = ['公司', '有限', '集团', '科技', '控股'];
+                if (keywords.some(k => company.includes(k)) || company.length >= 4) {
+                    return { company, date: new Date().toISOString().split('T')[0] };
+                }
+            }
+            
+            if (company && date) {
+                return { company, date };
+            }
+            
+            return null;
+        }
+    </script>
+</body>
+</html>

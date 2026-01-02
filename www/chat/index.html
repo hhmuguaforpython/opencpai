@@ -250,7 +250,7 @@
             </div>
             
             <!-- Messages Container (对话状态) -->
-            <div id="messages-container" class="hidden max-w-3xl mx-auto py-8 px-4 space-y-6">
+            <div id="messages-container" class="hidden max-w-5xl mx-auto py-8 px-4 space-y-6">
                 <!-- 消息会动态添加到这里 -->
             </div>
             
@@ -258,7 +258,7 @@
         
         <!-- Input Area -->
         <div class="border-t border-white/5 p-4">
-            <div class="max-w-3xl mx-auto">
+            <div class="max-w-5xl mx-auto">
                 <!-- 已上传文件预览 -->
                 <div id="uploaded-files" class="hidden flex flex-wrap gap-2 mb-3">
                     <!-- 动态填充 -->
@@ -707,8 +707,8 @@
                         <span class="text-xs text-gray-400">共 ${state.uploadedFiles.length} 个</span>
                     </div>
                     
-                    <!-- 文件分类卡片（2x2网格，间距加大）-->
-                    <div class="grid grid-cols-2 gap-3">
+                    <!-- 文件分类卡片（一行四列，参考Web样式）-->
+                    <div class="grid grid-cols-4 gap-3">
                         ${renderFileCard('科目余额表', classifiedFiles.balance, 'required', '#3B82F6')}
                         ${renderFileCard('序时账', classifiedFiles.journal, 'optional', '#10B981')}
                         ${renderFileCard('财务报表', classifiedFiles.statement.length > 0 ? classifiedFiles.statement.join('、') : null, 'optional', '#8B5CF6')}
@@ -1012,7 +1012,7 @@
                     <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>
                     <span class="text-xs text-gray-500">Jenny</span>
                 </div>
-                <div class="flex-1 max-w-2xl bg-white/5 rounded-2xl rounded-tl-sm p-4">
+                <div class="flex-1 max-w-4xl bg-white/5 rounded-2xl rounded-tl-sm p-4">
                     <!-- 标题和计时器 -->
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
@@ -1254,7 +1254,7 @@
                     <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>
                     <span class="text-xs text-gray-500">Jenny</span>
                 </div>
-                <div class="flex-1 max-w-2xl bg-gradient-to-b from-gray-800/50 to-gray-900/50 rounded-2xl rounded-tl-sm p-6 border border-white/10">
+                <div class="flex-1 max-w-4xl bg-gradient-to-b from-gray-800/50 to-gray-900/50 rounded-2xl rounded-tl-sm p-6 border border-white/10">
                     <!-- 成功图标 -->
                     <div class="text-center mb-6">
                         <div class="w-16 h-16 mx-auto bg-green-500 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-green-500/30">
@@ -1482,7 +1482,7 @@
             
             messageDiv.innerHTML = `
                 ${avatar}
-                <div class="max-w-xl ${bubbleClass} px-4 py-3 text-sm leading-relaxed">
+                <div class="max-w-3xl ${bubbleClass} px-4 py-3 text-sm leading-relaxed">
                     ${html}
                 </div>
             `;
@@ -1500,7 +1500,7 @@
                     <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-sm">✨</div>
                     <span class="text-xs text-gray-500">Jenny</span>
                 </div>
-                <div class="max-w-xl bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed">
+                <div class="max-w-3xl bg-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed">
                     ${html}
                 </div>
             `;

@@ -592,14 +592,16 @@
     <!-- JavaScript -->
     <script>
         // =====================================================
-        // 配置（与 www/chat 一致：始终用本地后端）
+        // 配置（智能检测：本地开发用 localhost，远程访问用 Tunnel）
         // =====================================================
+        const isLocalDev = window.location.hostname === 'localhost' || 
+                           window.location.hostname === '127.0.0.1';
         const CONFIG = {
-            // ⭐ 与 www.opencpai.com/chat 一致：始终使用本地后端（用户在自己电脑运行）
-            backendUrl: 'http://127.0.0.1:8088',
+            // ⭐ 智能检测：本地开发快速连接，远程用户走 Cloudflare Tunnel
+            backendUrl: isLocalDev ? 'http://127.0.0.1:8088' : 'https://api.opencpai.com',
             pollInterval: 2000,
         };
-        console.log('🔧 Backend URL:', CONFIG.backendUrl);
+        console.log('🔧 Backend URL:', CONFIG.backendUrl, isLocalDev ? '(本地模式)' : '(远程模式)');
 
         // =====================================================
         // 用户设置（存储在 localStorage，未来可从登录账户获取）

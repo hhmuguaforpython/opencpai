@@ -32,8 +32,10 @@ import {
 // ========================================
 // 配置常量
 // ========================================
-// 生产环境使用cloudflared公网URL，开发环境使用本地8088
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://127.0.0.1:8088';
+// ⭐ 与 frontend_chat 保持一致：本地开发用8088，生产环境用 api.opencpai.com
+const API_BASE = process.env.NODE_ENV === 'production'
+  ? 'https://api.opencpai.com'
+  : 'http://127.0.0.1:8088';
 
 // ========================================
 // 系统提示词 - 双模式

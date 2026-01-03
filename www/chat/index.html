@@ -432,11 +432,12 @@
     <!-- JavaScript -->
     <script>
         // =====================================================
-        // 配置（与 Web App 保持一致：始终用本地后端）
+        // 配置：自动检测环境
         // =====================================================
         const CONFIG = {
-            // ⭐ 与 Web App 一致：始终使用本地后端（用户在自己电脑运行）
-            backendUrl: 'http://127.0.0.1:8088',
+            backendUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'http://127.0.0.1:8088'
+                : 'https://api.opencpai.com',
             pollInterval: 2000,
         };
         console.log('🔧 Backend URL:', CONFIG.backendUrl);

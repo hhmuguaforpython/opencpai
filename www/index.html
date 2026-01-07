@@ -2,6 +2,21 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!-- 🔐 密码保护 -->
+    <script>
+    (function() {
+        const PASS = 'Hh901207';
+        const KEY = 'opencpai_auth';
+        if (sessionStorage.getItem(KEY) !== 'true') {
+            const input = prompt('请输入访问密码：');
+            if (input !== PASS) {
+                document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:Inter,sans-serif;color:#888;background:#0a0a0a;"><h1>访问被拒绝</h1></div>';
+                throw new Error('Auth failed');
+            }
+            sessionStorage.setItem(KEY, 'true');
+        }
+    })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenCPAi - 让审计更智能 | AI驱动的审计自动化</title>
     
